@@ -466,8 +466,8 @@ class EmailService {
     public static function sendSubtaskCreated($recipientEmail, $recipientName, $taskTitle, $subtaskTitle, $taskId, $createdByName) {
         // Check if user wants to receive this type of email
         $userId = self::getUserIdByEmail($recipientEmail);
-        if ($userId && !self::shouldSendEmail($userId, 'subtask_completed')) {
-            error_log("User $recipientEmail has disabled subtask notifications");
+        if ($userId && !self::shouldSendEmail($userId, 'subtask_created')) {
+            error_log("User $recipientEmail has disabled subtask_created notifications");
             return true;
         }
         

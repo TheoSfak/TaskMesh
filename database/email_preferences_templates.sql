@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS user_email_preferences (
     -- Notification Types (τι θέλει να λαμβάνει)
     notify_task_assigned BOOLEAN DEFAULT TRUE,
     notify_task_completed BOOLEAN DEFAULT TRUE,
+    notify_subtask_created BOOLEAN DEFAULT TRUE,
     notify_subtask_completed BOOLEAN DEFAULT TRUE,
     notify_comment_added BOOLEAN DEFAULT TRUE,
     notify_deadline_reminder BOOLEAN DEFAULT TRUE,
@@ -103,8 +104,8 @@ CREATE TABLE IF NOT EXISTS email_templates (
 -- =============================================
 -- Insert Default Email Preferences for Existing Admin
 -- =============================================
-INSERT INTO user_email_preferences (user_id, notify_task_assigned, notify_task_completed, notify_subtask_completed, notify_comment_added, notify_deadline_reminder, notify_team_invitation, notify_direct_message, team_filter)
-SELECT id, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, 'all'
+INSERT INTO user_email_preferences (user_id, notify_task_assigned, notify_task_completed, notify_subtask_created, notify_subtask_completed, notify_comment_added, notify_deadline_reminder, notify_team_invitation, notify_direct_message, team_filter)
+SELECT id, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, 'all'
 FROM users WHERE role = 'ADMIN'
 ON DUPLICATE KEY UPDATE updated_at = NOW();
 

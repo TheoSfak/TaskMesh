@@ -219,6 +219,15 @@
                         </label>
 
                         <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_subtask_created" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">📝 Νέο Subtask</span>
+                                <p class="text-sm text-gray-500">Όταν προστίθεται νέο subtask</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
                             <input type="checkbox" x-model="preferences.notify_subtask_completed" 
                                    class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
                             <div>
@@ -639,6 +648,7 @@ function settingsPage() {
         preferences: {
             notify_task_assigned: true,
             notify_task_completed: true,
+            notify_subtask_created: true,
             notify_subtask_completed: true,
             notify_comment_added: true,
             notify_deadline_reminder: true,
