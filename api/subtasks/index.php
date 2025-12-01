@@ -115,6 +115,60 @@ if ($method === 'POST') {
         $stmt->execute();
         $subtask = $stmt->fetch();
         
+        // Send email notifications to all task assignees
+        try {
+            // Get task details and all assignees
+            $query = "SELECT t.title as task_title, t.creator_id,
+                      GROUP_CONCAT(DISTINCT ta.user_id) as assignee_ids
+                      FROM tasks t
+                      LEFT JOIN task_assignees ta ON t.id = ta.task_id
+                      WHERE t.id = :task_id
+                      GROUP BY t.id";
+            $stmt = $db->prepare($query);
+            $stmt->bindParam(":task_id", $data->task_id);
+            $stmt->execute();
+            $taskData = $stmt->fetch();
+            
+            if ($taskData) {
+                $task_title = $taskData['task_title'];
+                $assignee_ids = $taskData['assignee_ids'] ? explode(',', $taskData['assignee_ids']) : [];
+                
+                // Get creator info (the person who created the subtask)
+                $query = "SELECT first_name, last_name FROM users WHERE id = :user_id";
+                $stmt = $db->prepare($query);
+                $stmt->bindParam(":user_id", $user['id']);
+                $stmt->execute();
+                $creator = $stmt->fetch();
+                $created_by_name = $creator['first_name'] . ' ' . $creator['last_name'];
+                
+                // Send email to all assignees (except the creator)
+                foreach ($assignee_ids as $assignee_id) {
+                    if ($assignee_id != $user['id']) { // Don't send to self
+                        $query = "SELECT email, first_name, last_name FROM users WHERE id = :user_id";
+                        $stmt = $db->prepare($query);
+                        $stmt->bindParam(":user_id", $assignee_id);
+                        $stmt->execute();
+                        $assignee = $stmt->fetch();
+                        
+                        if ($assignee && $assignee['email']) {
+                            $assignee_name = $assignee['first_name'] . ' ' . $assignee['last_name'];
+                            EmailService::sendSubtaskCreated(
+                                $assignee['email'],
+                                $assignee_name,
+                                $task_title,
+                                $data->title,
+                                $data->task_id,
+                                $created_by_name
+                            );
+                        }
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            // Log but don't fail the request
+            error_log("Failed to send subtask created email: " . $e->getMessage());
+        }
+        
         http_response_code(201);
         echo json_encode($subtask);
     } else {

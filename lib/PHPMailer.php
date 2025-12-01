@@ -462,6 +462,50 @@ class EmailService {
         return self::send($managerEmail, "☑️ Subtask Ολοκληρώθηκε: " . $subtaskTitle, $body);
     }
     
+    // Send email when a new subtask is created (notifies all task assignees)
+    public static function sendSubtaskCreated($recipientEmail, $recipientName, $taskTitle, $subtaskTitle, $taskId, $createdByName) {
+        // Check if user wants to receive this type of email
+        $userId = self::getUserIdByEmail($recipientEmail);
+        if ($userId && !self::shouldSendEmail($userId, 'subtask_completed')) {
+            error_log("User $recipientEmail has disabled subtask notifications");
+            return true;
+        }
+        
+        $baseUrl = self::getBaseUrl();
+        
+        $content = '
+            <p style="color: #374151; font-size: 16px; margin: 0 0 20px 0; line-height: 1.6;">
+                Γεια σου <strong style="color: #111827;">' . htmlspecialchars($recipientName) . '</strong>,
+            </p>
+            <p style="color: #6b7280; font-size: 15px; margin: 0 0 25px 0; line-height: 1.6;">
+                Ο/Η <strong style="color: #374151;">' . htmlspecialchars($createdByName) . '</strong> πρόσθεσε ένα νέο subtask:
+            </p>
+            
+            <!-- Subtask Card -->
+            <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 22px 25px; margin-bottom: 15px; border-left: 5px solid #3b82f6;">
+                <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px;">Νέο Subtask</p>
+                <h2 style="color: #1e40af; margin: 0; font-size: 18px; font-weight: 600;">' . htmlspecialchars($subtaskTitle) . '</h2>
+            </div>
+            
+            <p style="color: #9ca3af; font-size: 14px; margin: 0;">
+                Στο task: <strong style="color: #6b7280;">' . htmlspecialchars($taskTitle) . '</strong>
+            </p>
+        ';
+        
+        $body = self::buildEmailBody(
+            'subtask_completed',
+            '📝',
+            'Νέο Subtask',
+            'Προστέθηκε νέο subtask στο task σου',
+            '#3b82f6', '#2563eb',
+            $content,
+            'Δες το Task',
+            $baseUrl . '/dashboard.html#tasks'
+        );
+        
+        return self::send($recipientEmail, "📝 Νέο Subtask: " . $subtaskTitle, $body);
+    }
+    
     public static function sendCommentAdded($recipientEmail, $recipientName, $taskTitle, $taskId, $commentAuthor, $commentText) {
         // Check if user wants to receive this type of email
         $userId = self::getUserIdByEmail($recipientEmail);

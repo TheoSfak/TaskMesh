@@ -8,11 +8,12 @@ TaskMesh στέλνει αυτόματα email notifications για τα παρ�
 
 1. **Task Assignment** - Όταν ένας manager αναθέτει task σε member
 2. **Task Completion** - Όταν ολοκληρώνεται task, ειδοποιείται ο creator (manager)
-3. **Subtask Completion** - Όταν ολοκληρώνεται subtask, ειδοποιείται ο manager
-4. **New Comment** - Όταν προστίθεται σχόλιο σε task, ειδοποιούνται creator και assignee
-5. **Team Member Added** - Όταν προστίθεται μέλος σε ομάδα
-6. **Direct Message** - Όταν λαμβάνεις νέο DM
-7. **Deadline Reminder** - 24 ώρες πριν το deadline (μέσω cron job)
+3. **Subtask Created** - Όταν προστίθεται νέο subtask, ειδοποιούνται όλοι οι assignees του task
+4. **Subtask Completion** - Όταν ολοκληρώνεται subtask, ειδοποιείται ο manager
+5. **New Comment** - Όταν προστίθεται σχόλιο σε task, ειδοποιούνται creator και assignee
+6. **Team Member Added** - Όταν προστίθεται μέλος σε ομάδα
+7. **Direct Message** - Όταν λαμβάνεις νέο DM
+8. **Deadline Reminder** - 24 ώρες πριν το deadline (μέσω cron job)
 
 ---
 
