@@ -149,9 +149,28 @@
 
     <div class="flex h-screen relative z-10">
         
+        <!-- Mobile Menu Overlay -->
+        <div x-show="mobileMenuOpen" 
+             @click="mobileMenuOpen = false"
+             x-transition:enter="transition-opacity ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-black/50 z-40 lg:hidden"
+             style="display: none;">
+        </div>
+        
         <!-- Sidebar -->
-        <aside class="w-64 p-6 flex flex-col hidden lg:flex relative overflow-hidden" 
+        <aside :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'" 
+               class="w-64 p-6 flex flex-col fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto transition-transform duration-300 ease-in-out" 
                style="background: linear-gradient(180deg, rgba(88, 28, 135, 0.95) 0%, rgba(124, 58, 237, 0.9) 50%, rgba(167, 139, 250, 0.85) 100%); backdrop-filter: blur(20px);">
+            
+            <!-- Mobile Close Button -->
+            <button @click="mobileMenuOpen = false" class="lg:hidden absolute top-4 right-4 text-white/80 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
             
             <!-- Decorative Elements -->
             <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
@@ -294,7 +313,7 @@
             <header class="glass p-4 flex items-center justify-between shadow-lg">
                 <div class="flex items-center gap-4">
                     <!-- Mobile Menu Button -->
-                    <button class="lg:hidden text-purple-600">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden text-purple-600">
                         <i class="fas fa-bars text-xl"></i>
                     </button>
                     
@@ -370,6 +389,7 @@
                 pageTitle: 'Αρχική',
                 loading: false,
                 darkMode: false,
+                mobileMenuOpen: false,
                 showNotifications: false,
                 notifications: [],
                 toasts: [],
