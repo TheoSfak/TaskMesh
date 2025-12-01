@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMesh - Σύνδεση</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); }
+            25% { transform: translateY(-20px) translateX(10px); }
+            50% { transform: translateY(-10px) translateX(-10px); }
+            75% { transform: translateY(-30px) translateX(5px); }
+        }
+        
+        .animate-float {
+            animation: float 15s infinite ease-in-out;
+        }
+        
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+    
+    <!-- Animated Background Particles -->
+    <div class="absolute inset-0 overflow-hidden">
+        <div class="particle w-32 h-32 bg-white opacity-10 animate-float" style="top: 10%; left: 10%; animation-delay: 0s;"></div>
+        <div class="particle w-24 h-24 bg-white opacity-10 animate-float" style="top: 60%; left: 80%; animation-delay: 2s;"></div>
+        <div class="particle w-40 h-40 bg-white opacity-10 animate-float" style="top: 80%; left: 20%; animation-delay: 4s;"></div>
+        <div class="particle w-20 h-20 bg-white opacity-10 animate-float" style="top: 30%; left: 70%; animation-delay: 1s;"></div>
+        <div class="particle w-28 h-28 bg-white opacity-10 animate-float" style="top: 50%; left: 40%; animation-delay: 3s;"></div>
+    </div>
+
+    <!-- Login Form -->
+    <div x-data="loginForm()" class="glass rounded-3xl p-8 md:p-12 max-w-md w-full relative z-10 shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">TaskMesh</h1>
+            <p class="text-white opacity-80">Διαχείριση εργασιών με στυλ</p>
+        </div>
+
+        <form @submit.prevent="login" class="space-y-6">
+            <!-- Email -->
+            <div>
+                <label class="block text-white text-sm font-semibold mb-2">Email</label>
+                <input 
+                    type="email" 
+                    x-model="form.email"
+                    required
+                    class="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-white placeholder-opacity-60 border border-white border-opacity-30 focus:border-opacity-60 transition"
+                    placeholder="your@email.com"
+                >
+            </div>
+
+            <!-- Password -->
+            <div>
+                <label class="block text-white text-sm font-semibold mb-2">Κωδικός</label>
+                <input 
+                    type="password" 
+                    x-model="form.password"
+                    required
+                    minlength="8"
+                    class="w-full px-4 py-3 rounded-xl bg-white bg-opacity-20 text-white placeholder-white placeholder-opacity-60 border border-white border-opacity-30 focus:border-opacity-60 transition"
+                    placeholder="••••••••"
+                >
+            </div>
+
+            <!-- Error Message -->
+            <div x-show="error" x-text="error" class="bg-red-500 bg-opacity-20 border border-red-400 text-white px-4 py-3 rounded-xl text-sm"></div>
+
+            <!-- Success Message -->
+            <div x-show="success" x-text="success" class="bg-green-500 bg-opacity-20 border border-green-400 text-white px-4 py-3 rounded-xl text-sm"></div>
+
+            <!-- Submit Button -->
+            <button 
+                type="submit"
+                :disabled="loading"
+                class="w-full btn-primary text-white font-bold py-3 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <span x-show="!loading">Σύνδεση</span>
+                <span x-show="loading">Φόρτωση...</span>
+            </button>
+        </form>
+
+        <!-- Register Link -->
+        <div class="text-center mt-6">
+            <p class="text-white opacity-80">
+                Δεν έχεις λογαριασμό; 
+                <a href="register.html" class="font-bold hover:underline">Εγγραφή</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-detect API URL based on current location
+        const API_URL = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '') + '/api';
+
+        function loginForm() {
+            return {
+                form: {
+                    email: '',
+                    password: ''
+                },
+                loading: false,
+                error: '',
+                success: '',
+
+                async login() {
+                    this.loading = true;
+                    this.error = '';
+                    this.success = '';
+
+                    try {
+                        const response = await fetch(`${API_URL}/auth/login.php`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.form)
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            this.success = 'Επιτυχής σύνδεση! Ανακατεύθυνση...';
+                            localStorage.setItem('token', data.token);
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                            
+                            setTimeout(() => {
+                                window.location.href = 'dashboard.html';
+                            }, 1000);
+                        } else {
+                            this.error = data.error || 'Σφάλμα σύνδεσης';
+                        }
+                    } catch (err) {
+                        this.error = 'Σφάλμα δικτύου. Ελέγξτε τη σύνδεση σας.';
+                        console.error(err);
+                    } finally {
+                        this.loading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

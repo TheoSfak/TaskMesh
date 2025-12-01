@@ -1,0 +1,52 @@
+# TaskMesh - Git Ignore File
+
+# Email Configuration (NEVER commit with real credentials)
+config/email.php
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+cron/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp files
+tmp/
+temp/
+cache/
+
+# Uploads (if added in future)
+uploads/
+storage/
+
+# Composer (if using)
+vendor/
+composer.lock
+
+# Node modules (if adding frontend build)
+node_modules/
+package-lock.json
+
+# Build files
+dist/
+build/
+
+# Deploy folder (production configs with credentials)
+deploy/
+
+# Test files with passwords
+test_password.php
+fix_admin_password.php

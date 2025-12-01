@@ -1,0 +1,503 @@
+<div x-data="teamsPage()" x-init="loadTeams()" class="space-y-6">
+    
+    <!-- Header with Create Button -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white drop-shadow-lg">Οι Ομάδες μου</h1>
+            <p class="text-purple-100">Διαχειρίσου τις ομάδες σου</p>
+        </div>
+        <button @click="showCreateModal = true" 
+                x-show="user.role === 'ADMIN' || user.role === 'MANAGER'"
+                class="px-6 py-3 bg-white/90 backdrop-blur text-purple-700 font-semibold rounded-xl hover:bg-white hover:shadow-lg transition hover:-translate-y-1">
+            <i class="fas fa-plus mr-2"></i>
+            Νέα Ομάδα
+        </button>
+    </div>
+
+    <!-- Teams Grid -->
+    <div x-show="loading" class="text-center py-12">
+        <div class="inline-block w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="!loading && teams.length === 0" class="bg-gradient-to-br from-white/80 to-purple-50/80 backdrop-blur-lg rounded-3xl p-12 text-center shadow-lg border border-purple-100">
+        <i class="fas fa-users text-6xl text-purple-300 mb-4"></i>
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Δεν υπάρχουν ομάδες</h3>
+        <p class="text-gray-600">Δημιούργησε την πρώτη σου ομάδα!</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <template x-for="team in teams" :key="team.id">
+            <div class="bg-gradient-to-br from-white/90 to-purple-50/80 backdrop-blur-lg rounded-3xl p-6 shadow-lg border border-purple-100/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl cursor-pointer shadow-lg hover:scale-105 transition"
+                         :style="`background: linear-gradient(135deg, ${team.color} 0%, ${team.color}dd 100%); box-shadow: 0 4px 15px ${team.color}40;`"
+                         @click="viewTeam(team)">
+                        <span x-text="team.name[0]"></span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-purple-600 bg-purple-100 px-3 py-1 rounded-full font-medium" x-text="`${team.member_count} μέλη`"></span>
+                        <template x-if="team.owner_id === user.id || user.role === 'ADMIN'">
+                            <button @click.stop="deleteTeam(team)" 
+                                    class="ml-2 w-8 h-8 flex items-center justify-center rounded-lg bg-rose-100 text-rose-600 hover:bg-rose-200 transition"
+                                    title="Διαγραφή ομάδας">
+                                <i class="fas fa-trash text-sm"></i>
+                            </button>
+                        </template>
+                    </div>
+                </div>
+                
+                <div @click="viewTeam(team)" class="cursor-pointer">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2" x-text="team.name"></h3>
+                    <p class="text-gray-600 text-sm mb-4" x-text="team.description || 'Χωρίς περιγραφή'"></p>
+                    
+                    <div class="space-y-2 mb-3">
+                        <div class="flex items-center gap-2 text-sm text-gray-500">
+                            <i class="fas fa-user-tie text-purple-400"></i>
+                            <span>Owner: <span class="font-medium text-gray-700" x-text="team.owner_name"></span></span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-sm">
+                            <i class="fas fa-users text-purple-400"></i>
+                            <div class="flex -space-x-2">
+                                <template x-for="(member, index) in team.members.slice(0, 5)" :key="member.id">
+                                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white shadow-sm"
+                                         :title="member.first_name + ' ' + member.last_name">
+                                        <span x-text="member.first_name[0] + member.last_name[0]"></span>
+                                    </div>
+                                </template>
+                                <template x-if="team.members.length > 5">
+                                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-bold border-2 border-white shadow-sm"
+                                         :title="'+' + (team.members.length - 5) + ' ακόμη'">
+                                        <span x-text="'+' + (team.members.length - 5)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Create Team Modal -->
+    <div x-show="showCreateModal" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="showCreateModal = false">
+        
+        <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Νέα Ομάδα</h2>
+            
+            <form @submit.prevent="createTeam" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Όνομα Ομάδας</label>
+                    <input type="text" x-model="newTeam.name" required
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Περιγραφή</label>
+                    <textarea x-model="newTeam.description" rows="3"
+                              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Χρώμα</label>
+                    <div class="grid grid-cols-8 gap-2">
+                        <template x-for="color in colors" :key="color">
+                            <button type="button" @click="newTeam.color = color"
+                                    :class="{'ring-4 ring-gray-400': newTeam.color === color}"
+                                    class="w-10 h-10 rounded-xl transition hover:scale-110"
+                                    :style="`background: ${color}`"></button>
+                        </template>
+                    </div>
+                </div>
+
+                <div x-show="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="error"></div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showCreateModal = false; resetForm()"
+                            class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                        Ακύρωση
+                    </button>
+                    <button type="submit" :disabled="creating"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!creating">Δημιουργία</span>
+                        <span x-show="creating">Φόρτωση...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Team Modal -->
+    <div x-show="selectedTeam" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="selectedTeam = null">
+        
+        <div class="glass rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] overflow-auto" @click.stop>
+            <template x-if="selectedTeam">
+                <div>
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-2xl"
+                             :style="`background: ${selectedTeam.color}`">
+                            <span x-text="selectedTeam.name[0]"></span>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold text-gray-800" x-text="selectedTeam.name"></h2>
+                            <p class="text-gray-600" x-text="selectedTeam.description"></p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button @click="openEditTeamModal()" 
+                                    x-show="user.role === 'ADMIN' || user.role === 'MANAGER' || selectedTeam.owner_id === user.id"
+                                    class="text-blue-600 hover:text-blue-800" 
+                                    title="Επεξεργασία">
+                                <i class="fas fa-edit text-xl"></i>
+                            </button>
+                            <button @click="selectedTeam = null" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times text-2xl"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <h3 class="font-bold text-gray-800">Μέλη Ομάδας</h3>
+                                <button @click="showAddMemberModal = true; loadAvailableUsers()" 
+                                        x-show="user.role === 'ADMIN' || user.role === 'MANAGER'"
+                                        class="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition">
+                                    <i class="fas fa-user-plus mr-1"></i>
+                                    Προσθήκη Μέλους
+                                </button>
+                            </div>
+                            
+                            <div x-show="loadingMembers" class="text-center py-4">
+                                <div class="inline-block w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                            
+                            <div x-show="!loadingMembers" class="space-y-2">
+                                <template x-for="member in teamMembers" :key="member.id">
+                                    <div class="flex items-center gap-3 p-3 bg-white bg-opacity-50 rounded-xl">
+                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
+                                            <span x-text="member.first_name[0] + member.last_name[0]"></span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="font-semibold text-gray-800" x-text="member.first_name + ' ' + member.last_name"></p>
+                                            <p class="text-sm text-gray-500" x-text="member.email"></p>
+                                        </div>
+                                        <template x-if="member.id === selectedTeam.owner_id">
+                                            <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-semibold">Owner</span>
+                                        </template>
+                                        <template x-if="member.id !== selectedTeam.owner_id && (user.role === 'ADMIN' || user.role === 'MANAGER')">
+                                            <button @click="removeMember(member.id)" 
+                                                    class="text-red-500 hover:text-red-700">
+                                                <i class="fas fa-user-minus"></i>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <button @click="selectedTeam = null; showAddMemberModal = false;" 
+                                class="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                                Κλείσιμο
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div x-show="showAddMemberModal" 
+         x-transition
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="showAddMemberModal = false">
+        
+        <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Προσθήκη Μέλους</h2>
+            
+            <form @submit.prevent="addMember" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Επιλογή Χρήστη</label>
+                    <select x-model="selectedUserId" required
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                        <option value="">Επιλέξτε χρήστη...</option>
+                        <template x-for="user in availableUsers" :key="user.id">
+                            <option :value="user.id" x-text="user.first_name + ' ' + user.last_name + ' (' + user.email + ')'"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <div x-show="addMemberError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="addMemberError"></div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showAddMemberModal = false"
+                            class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                        Ακύρωση
+                    </button>
+                    <button type="submit" :disabled="addingMember"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!addingMember">Προσθήκη</span>
+                        <span x-show="addingMember">Προσθήκη...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Team Modal -->
+    <div x-show="showEditTeamModal" 
+         x-transition
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="showEditTeamModal = false">
+        
+        <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Επεξεργασία Ομάδας</h2>
+            
+            <form @submit.prevent="updateTeam" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Όνομα Ομάδας</label>
+                    <input type="text" x-model="editTeamForm.name" required
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Περιγραφή</label>
+                    <textarea x-model="editTeamForm.description" rows="3"
+                              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Χρώμα</label>
+                    <div class="flex gap-2">
+                        <template x-for="color in colors" :key="color">
+                            <button type="button" 
+                                    @click="editTeamForm.color = color"
+                                    :style="`background: ${color}`"
+                                    :class="editTeamForm.color === color ? 'ring-4 ring-offset-2 ring-purple-500' : ''"
+                                    class="w-10 h-10 rounded-lg transition">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <div x-show="editTeamError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="editTeamError"></div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showEditTeamModal = false"
+                            class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                        Ακύρωση
+                    </button>
+                    <button type="submit" :disabled="updatingTeam"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!updatingTeam">Αποθήκευση</span>
+                        <span x-show="updatingTeam">Αποθήκευση...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function teamsPage() {
+    return {
+        user: JSON.parse(localStorage.getItem('user') || '{}'),
+        teams: [],
+        selectedTeam: null,
+        showCreateModal: false,
+        showAddMemberModal: false,
+        showEditTeamModal: false,
+        teamMembers: [],
+        availableUsers: [],
+        selectedUserId: '',
+        loadingMembers: false,
+        addingMember: false,
+        updatingTeam: false,
+        addMemberError: '',
+        editTeamError: '',
+        editTeamForm: {
+            name: '',
+            description: '',
+            color: '#6366f1'
+        },
+        loading: false,
+        creating: false,
+        error: '',
+        newTeam: {
+            name: '',
+            description: '',
+            color: '#6366f1'
+        },
+        colors: ['#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#10b981'],
+
+        async loadTeams() {
+            this.loading = true;
+            try {
+                this.teams = await apiRequest('/teams/index.php');
+            } catch (err) {
+                console.error('Error loading teams:', err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async createTeam() {
+            this.creating = true;
+            this.error = '';
+            try {
+                const team = await apiRequest('/teams/index.php', {
+                    method: 'POST',
+                    body: JSON.stringify(this.newTeam)
+                });
+                this.teams.unshift(team);
+                this.showCreateModal = false;
+                this.resetForm();
+            } catch (err) {
+                this.error = err.message;
+            } finally {
+                this.creating = false;
+            }
+        },
+
+        async deleteTeam(team) {
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε την ομάδα "${team.name}"; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.`)) {
+                return;
+            }
+
+            try {
+                await apiRequest(`/teams/index.php?id=${team.id}`, {
+                    method: 'DELETE'
+                });
+                this.teams = this.teams.filter(t => t.id !== team.id);
+                if (this.selectedTeam?.id === team.id) {
+                    this.selectedTeam = null;
+                }
+            } catch (err) {
+                alert('Σφάλμα κατά τη διαγραφή της ομάδας: ' + err.message);
+            }
+        },
+
+        viewTeam(team) {
+            this.selectedTeam = team;
+            this.loadTeamMembers();
+        },
+
+        async loadTeamMembers() {
+            if (!this.selectedTeam) return;
+            
+            this.loadingMembers = true;
+            try {
+                this.teamMembers = await apiRequest(`/teams/members.php?team_id=${this.selectedTeam.id}`);
+            } catch (err) {
+                console.error('Error loading team members:', err);
+            } finally {
+                this.loadingMembers = false;
+            }
+        },
+
+        async loadAvailableUsers() {
+            try {
+                const allUsers = await apiRequest('/users/index.php');
+                // Filter out users already in the team
+                const memberIds = this.teamMembers.map(m => m.id);
+                this.availableUsers = allUsers.filter(u => !memberIds.includes(u.id) && u.is_active);
+            } catch (err) {
+                console.error('Error loading users:', err);
+            }
+        },
+
+        async addMember() {
+            this.addingMember = true;
+            this.addMemberError = '';
+
+            try {
+                await apiRequest('/teams/members.php', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        team_id: this.selectedTeam.id,
+                        user_id: this.selectedUserId
+                    })
+                });
+
+                await this.loadTeamMembers();
+                this.showAddMemberModal = false;
+                this.selectedUserId = '';
+            } catch (err) {
+                this.addMemberError = err.message;
+            } finally {
+                this.addingMember = false;
+            }
+        },
+
+        async removeMember(userId) {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να αφαιρέσετε αυτό το μέλος;')) return;
+
+            try {
+                await apiRequest(`/teams/members.php?team_id=${this.selectedTeam.id}&user_id=${userId}`, {
+                    method: 'DELETE'
+                });
+
+                await this.loadTeamMembers();
+                await this.loadTeams(); // Refresh teams list to update member count and avatars
+            } catch (err) {
+                alert('Σφάλμα: ' + err.message);
+            }
+        },
+
+        openEditTeamModal() {
+            this.editTeamForm = {
+                name: this.selectedTeam.name,
+                description: this.selectedTeam.description || '',
+                color: this.selectedTeam.color
+            };
+            this.showEditTeamModal = true;
+            this.editTeamError = '';
+        },
+
+        async updateTeam() {
+            this.updatingTeam = true;
+            this.editTeamError = '';
+
+            try {
+                const updated = await apiRequest(`/teams/index.php?id=${this.selectedTeam.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(this.editTeamForm)
+                });
+
+                // Update in teams list
+                const index = this.teams.findIndex(t => t.id === this.selectedTeam.id);
+                if (index !== -1) {
+                    this.teams[index] = { ...this.teams[index], ...updated };
+                }
+
+                // Update selected team
+                this.selectedTeam = { ...this.selectedTeam, ...updated };
+                
+                this.showEditTeamModal = false;
+            } catch (err) {
+                this.editTeamError = err.message;
+            } finally {
+                this.updatingTeam = false;
+            }
+        },
+
+        resetForm() {
+            this.newTeam = {
+                name: '',
+                description: '',
+                color: '#6366f1'
+            };
+            this.error = '';
+        }
+    }
+}
+</script>

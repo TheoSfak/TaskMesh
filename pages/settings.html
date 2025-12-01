@@ -1,0 +1,1218 @@
+<div x-data="settingsPage()" x-init="init()" class="space-y-6">
+    
+    <!-- Admin Check -->
+    <div x-show="!isAdmin" class="glass rounded-3xl p-12 text-center">
+        <i class="fas fa-lock text-6xl text-red-500 mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">Απαγορευμένη Πρόσβαση</h2>
+        <p class="text-gray-600">Μόνο οι Admins έχουν πρόσβαση σε αυτή τη σελίδα.</p>
+    </div>
+
+    <!-- Admin Panel -->
+    <div x-show="isAdmin">
+        
+        <!-- Tab Navigation -->
+        <div class="glass rounded-3xl p-2 mb-6">
+            <div class="flex gap-2 flex-wrap">
+                <button @click="activeTab = 'email'" 
+                        :class="activeTab === 'email' ? 'bg-white text-blue-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition">
+                    <i class="fas fa-envelope mr-2"></i>
+                    SMTP Settings
+                </button>
+                <button @click="activeTab = 'preferences'" 
+                        :class="activeTab === 'preferences' ? 'bg-white text-purple-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition">
+                    <i class="fas fa-bell mr-2"></i>
+                    Email Preferences
+                </button>
+                <button @click="activeTab = 'templates'" 
+                        :class="activeTab === 'templates' ? 'bg-white text-green-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition">
+                    <i class="fas fa-palette mr-2"></i>
+                    Email Templates
+                </button>
+            </div>
+        </div>
+
+        <!-- Email Settings Tab (SMTP) -->
+        <div x-show="activeTab === 'email'" class="glass rounded-3xl p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">📧 SMTP Configuration</h2>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="emailSettings.notifications_enabled" 
+                               @change="saveEmailSettings()"
+                               class="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                        <span class="font-semibold" :class="emailSettings.notifications_enabled ? 'text-green-600' : 'text-gray-500'">
+                            <i class="fas" :class="emailSettings.notifications_enabled ? 'fa-check-circle' : 'fa-times-circle'"></i>
+                            <span x-text="emailSettings.notifications_enabled ? 'Ενεργοποιημένα' : 'Απενεργοποιημένα'"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Info Banner -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-xl">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 text-xl mt-0.5 mr-3"></i>
+                    <div class="text-sm text-blue-800">
+                        <p class="font-semibold mb-1">Οδηγίες Gmail App Password:</p>
+                        <ol class="list-decimal list-inside space-y-1">
+                            <li>Ενεργοποίησε 2FA: <a href="https://myaccount.google.com/security" target="_blank" class="underline">Google Security</a></li>
+                            <li>Δημιούργησε App Password: <a href="https://myaccount.google.com/apppasswords" target="_blank" class="underline">App Passwords</a></li>
+                            <li>Χρησιμοποίησε το 16-character password παρακάτω</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            
+            <form @submit.prevent="saveEmailSettings" class="space-y-6">
+                <!-- SMTP Configuration -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">SMTP Server</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                SMTP Host <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" x-model="emailSettings.smtp_host" 
+                                   placeholder="smtp.gmail.com"
+                                   required
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                SMTP Port <span class="text-red-500">*</span>
+                            </label>
+                            <input type="number" x-model="emailSettings.smtp_port" 
+                                   placeholder="587"
+                                   required
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-gray-700 font-semibold mb-2">Encryption</label>
+                        <select x-model="emailSettings.smtp_encryption"
+                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            <option value="tls">TLS (Recommended)</option>
+                            <option value="ssl">SSL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Authentication -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Authentication</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                SMTP Username (Email) <span class="text-red-500">*</span>
+                            </label>
+                            <input type="email" x-model="emailSettings.smtp_username" 
+                                   placeholder="your-email@gmail.com"
+                                   required
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                SMTP Password <span class="text-red-500">*</span>
+                                <span x-show="emailSettings.password_is_set" class="text-green-600 text-sm font-normal">
+                                    <i class="fas fa-check-circle"></i> Password is set
+                                </span>
+                            </label>
+                            <input type="password" x-model="emailSettings.smtp_password" 
+                                   :placeholder="emailSettings.password_is_set ? '••••••••••••••••' : 'App Password (16 characters)'"
+                                   :required="!emailSettings.password_is_set"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Display Settings -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Email Display</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">From Email</label>
+                            <input type="email" x-model="emailSettings.smtp_from_email" 
+                                   placeholder="noreply@yourdomain.com"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">From Name</label>
+                            <input type="text" x-model="emailSettings.smtp_from_name" 
+                                   placeholder="TaskMesh Notifications"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Test Email Section -->
+                <div class="bg-gray-50 rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">🧪 Test Email</h3>
+                    <div class="flex gap-3">
+                        <input type="email" x-model="testEmailAddress" 
+                               placeholder="Enter email to send test"
+                               class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200">
+                        <button type="button" @click="testEmail" :disabled="testingEmail || !testEmailAddress"
+                                class="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50 whitespace-nowrap">
+                            <span x-show="!testingEmail"><i class="fas fa-paper-plane mr-2"></i>Send Test</span>
+                            <span x-show="testingEmail"><i class="fas fa-spinner fa-spin mr-2"></i>Sending...</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div x-show="emailError" x-transition class="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-xl" x-text="emailError"></div>
+                <div x-show="emailSuccess" x-transition class="bg-green-100 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-xl" x-text="emailSuccess"></div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" :disabled="savingEmail"
+                            class="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!savingEmail"><i class="fas fa-save mr-2"></i>Save Settings</span>
+                        <span x-show="savingEmail"><i class="fas fa-spinner fa-spin mr-2"></i>Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Email Preferences Tab -->
+        <div x-show="activeTab === 'preferences'" class="glass rounded-3xl p-8">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">🔔 Email Preferences</h2>
+                    <p class="text-gray-600 mt-1">Επιλέξτε ποια emails θέλετε να λαμβάνετε</p>
+                </div>
+            </div>
+
+            <form @submit.prevent="savePreferences" class="space-y-6">
+                <!-- Notification Types -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Τύποι Ειδοποιήσεων</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_task_assigned" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">📋 Ανάθεση Task</span>
+                                <p class="text-sm text-gray-500">Όταν σας ανατίθεται νέο task</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_task_completed" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">✅ Ολοκλήρωση Task</span>
+                                <p class="text-sm text-gray-500">Όταν ολοκληρώνεται ένα task</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_subtask_completed" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">☑️ Ολοκλήρωση Subtask</span>
+                                <p class="text-sm text-gray-500">Όταν ολοκληρώνεται ένα subtask</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_comment_added" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">💬 Νέο Σχόλιο</span>
+                                <p class="text-sm text-gray-500">Όταν προστίθεται σχόλιο σε task</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_deadline_reminder" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">⏰ Deadline Reminder</span>
+                                <p class="text-sm text-gray-500">Υπενθύμιση για deadlines</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_team_invitation" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">👥 Πρόσκληση σε Ομάδα</span>
+                                <p class="text-sm text-gray-500">Όταν προστίθεστε σε ομάδα</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 hover:border-purple-300 transition cursor-pointer">
+                            <input type="checkbox" x-model="preferences.notify_direct_message" 
+                                   class="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">📨 Direct Message</span>
+                                <p class="text-sm text-gray-500">Όταν λαμβάνετε μήνυμα</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Team Filter -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Φίλτρο Ομάδων</h3>
+                    <p class="text-gray-600 mb-4">Επιλέξτε από ποιες ομάδες θέλετε να λαμβάνετε ειδοποιήσεις</p>
+                    
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200 cursor-pointer">
+                            <input type="radio" x-model="preferences.team_filter" value="all"
+                                   class="w-5 h-5 text-purple-600 focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">🌐 Όλες οι Ομάδες</span>
+                                <p class="text-sm text-gray-500">Λαμβάνετε ειδοποιήσεις από όλες τις ομάδες</p>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-200 cursor-pointer">
+                            <input type="radio" x-model="preferences.team_filter" value="selected"
+                                   class="w-5 h-5 text-purple-600 focus:ring-2 focus:ring-purple-500">
+                            <div>
+                                <span class="font-semibold text-gray-800">🎯 Επιλεγμένες Ομάδες</span>
+                                <p class="text-sm text-gray-500">Επιλέξτε συγκεκριμένες ομάδες</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- Team Selection -->
+                    <div x-show="preferences.team_filter === 'selected'" class="mt-4 p-4 bg-gray-50 rounded-xl">
+                        <p class="text-sm text-gray-600 mb-3">Επιλέξτε τις ομάδες:</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <template x-for="team in teams" :key="team.id">
+                                <label class="flex items-center gap-2 p-2 bg-white rounded-lg border hover:border-purple-300 cursor-pointer">
+                                    <input type="checkbox" :value="team.id" x-model="preferences.selected_teams"
+                                           class="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500">
+                                    <span class="w-3 h-3 rounded-full" :style="'background-color: ' + team.color"></span>
+                                    <span class="text-gray-800" x-text="team.name"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Digest -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Συχνότητα Αποστολής</h3>
+                    
+                    <select x-model="preferences.email_digest"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                        <option value="instant">⚡ Άμεσα - Κάθε ειδοποίηση ξεχωριστά</option>
+                        <option value="daily">📅 Ημερήσια Σύνοψη - Μία φορά την ημέρα</option>
+                        <option value="weekly">📆 Εβδομαδιαία Σύνοψη - Μία φορά την εβδομάδα</option>
+                        <option value="none">🔕 Καμία - Χωρίς emails</option>
+                    </select>
+                </div>
+
+                <!-- Cron Job / Scheduled Task Setup -->
+                <div class="pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">
+                        <span x-show="isLocalhost()">🖥️ Windows Task Scheduler Setup</span>
+                        <span x-show="!isLocalhost()">🐧 Linux Cron Job Setup</span>
+                    </h3>
+                    
+                    <!-- Server Type Badge -->
+                    <div class="mb-4">
+                        <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold"
+                              :class="isLocalhost() ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'">
+                            <i :class="isLocalhost() ? 'fab fa-windows' : 'fab fa-linux'"></i>
+                            <span x-text="getServerType()"></span>
+                        </span>
+                    </div>
+                    
+                    <p class="text-gray-600 mb-4">Για αυτόματη αποστολή deadline reminders, ρυθμίστε μια προγραμματισμένη εργασία:</p>
+                    
+                    <!-- Frequency Selection -->
+                    <div class="mb-4">
+                        <label class="block text-gray-700 font-semibold mb-2">Επιλέξτε Συχνότητα</label>
+                        <select x-model="cronFrequency"
+                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                            <option value="hourly">⏰ Κάθε ώρα</option>
+                            <option value="every30min">⏱️ Κάθε 30 λεπτά</option>
+                            <option value="daily9am">🌅 1 φορά/ημέρα (9:00 πμ)</option>
+                            <option value="daily9pm">🌙 1 φορά/ημέρα (21:00)</option>
+                            <option value="twice">🔄 2 φορές/ημέρα (9:00 & 17:00)</option>
+                            <option value="every6hours">📊 Κάθε 6 ώρες</option>
+                        </select>
+                    </div>
+
+                    <!-- Dynamic Command Display -->
+                    <div class="bg-gray-900 rounded-xl p-4 mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-green-400 text-sm font-mono" x-text="isLocalhost() ? 'Windows Command:' : 'Linux Cron Command:'"></span>
+                            <button @click="copyCronCommand()" class="text-gray-400 hover:text-white transition">
+                                <i class="fas fa-copy"></i>
+                                <span class="ml-1 text-xs">Copy</span>
+                            </button>
+                        </div>
+                        <pre class="text-yellow-300 text-sm font-mono break-all whitespace-pre-wrap" x-text="getCronCommand()"></pre>
+                    </div>
+
+                    <!-- Cron Schedule Reference -->
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
+                        <h4 class="font-semibold text-purple-800 mb-2"><i class="fas fa-info-circle mr-1"></i> Πληροφορίες</h4>
+                        <div class="text-sm text-purple-700 space-y-1">
+                            <p><strong>Συχνότητα:</strong> <span x-text="getCronDescription()"></span></p>
+                            <p><strong>Base URL:</strong> <span class="font-mono bg-white px-2 py-0.5 rounded" x-text="getAutoBaseUrl()"></span> <span class="text-xs text-purple-500">(auto-detected)</span></p>
+                            <p><strong>Environment:</strong> <span class="font-mono bg-white px-2 py-0.5 rounded" x-text="getServerType()"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- Instructions based on environment -->
+                    <!-- Windows Instructions -->
+                    <div x-show="isLocalhost()" class="bg-blue-50 border-l-4 border-blue-500 rounded-xl p-4">
+                        <h4 class="font-semibold text-blue-800 mb-2"><i class="fab fa-windows mr-1"></i> Οδηγίες για Windows Task Scheduler</h4>
+                        <ol class="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+                            <li>Ανοίξτε <strong>Task Scheduler</strong> (taskschd.msc)</li>
+                            <li>Click <strong>Create Basic Task</strong></li>
+                            <li>Όνομα: <code class="bg-white px-1 rounded">TaskMesh Deadline Reminders</code></li>
+                            <li>Trigger: Επιλέξτε την επιθυμητή συχνότητα</li>
+                            <li>Action: <strong>Start a program</strong></li>
+                            <li>Program: <code class="bg-white px-1 rounded">C:\xampp\php\php.exe</code></li>
+                            <li>Arguments: Το path του script (βλ. παραπάνω)</li>
+                            <li>Click <strong>Finish</strong></li>
+                        </ol>
+                        <div class="mt-3 p-2 bg-white rounded-lg">
+                            <p class="text-xs text-gray-600"><strong>💡 Tip:</strong> Βεβαιωθείτε ότι το XAMPP τρέχει όταν εκτελείται το task</p>
+                        </div>
+                    </div>
+
+                    <!-- Linux/Production Instructions -->
+                    <div x-show="!isLocalhost()" class="bg-green-50 border-l-4 border-green-500 rounded-xl p-4">
+                        <h4 class="font-semibold text-green-800 mb-2"><i class="fab fa-linux mr-1"></i> Οδηγίες για Linux Server / Hostinger</h4>
+                        <ol class="text-sm text-green-700 space-y-1 list-decimal list-inside">
+                            <li>Login στο <strong>hPanel / cPanel</strong></li>
+                            <li>Advanced → <strong>Cron Jobs</strong></li>
+                            <li>Επιλέξτε <strong>Custom</strong></li>
+                            <li>Αντιγράψτε την παραπάνω εντολή</li>
+                            <li>Αντικαταστήστε το username με το δικό σας (π.χ. <code class="bg-white px-1 rounded">u123456789</code>)</li>
+                            <li>Click <strong>Create</strong></li>
+                        </ol>
+                        <div class="mt-3 p-2 bg-white rounded-lg">
+                            <p class="text-xs text-gray-600"><strong>💡 Tip:</strong> Ελέγξτε τα logs: <code class="bg-gray-100 px-1 rounded">TaskMesh/cron/cron.log</code></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages -->
+                <div x-show="preferencesError" x-transition class="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-xl" x-text="preferencesError"></div>
+                <div x-show="preferencesSuccess" x-transition class="bg-green-100 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-xl" x-text="preferencesSuccess"></div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" :disabled="savingPreferences"
+                            class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!savingPreferences"><i class="fas fa-save mr-2"></i>Αποθήκευση</span>
+                        <span x-show="savingPreferences"><i class="fas fa-spinner fa-spin mr-2"></i>Αποθήκευση...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Email Templates Tab -->
+        <div x-show="activeTab === 'templates'" class="space-y-6">
+            <div class="glass rounded-3xl p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">🎨 Email Template Designer</h2>
+                        <p class="text-gray-600 mt-1">Σχεδιάστε τα email templates με δυναμικά πεδία</p>
+                    </div>
+                </div>
+
+                <!-- Template Type Selection -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">Επιλέξτε Template</label>
+                    <select x-model="selectedTemplateType" @change="loadTemplate()"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200">
+                        <option value="">-- Επιλέξτε τύπο email --</option>
+                        <option value="task_assigned">📋 Task Assignment</option>
+                        <option value="task_completed">✅ Task Completion</option>
+                        <option value="subtask_completed">☑️ Subtask Completion</option>
+                        <option value="comment_added">💬 New Comment</option>
+                        <option value="deadline_reminder">⏰ Deadline Reminder</option>
+                        <option value="team_invitation">👥 Team Invitation</option>
+                        <option value="direct_message">📨 Direct Message</option>
+                        <option value="test_email">🧪 Test Email</option>
+                    </select>
+                </div>
+
+                <!-- Template Editor -->
+                <div x-show="selectedTemplateType" class="space-y-6">
+                    
+                    <!-- Subject -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Subject Line</label>
+                        <input type="text" x-model="currentTemplate.subject"
+                               placeholder="Email subject..."
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200">
+                        <p class="text-xs text-gray-500 mt-1">Διαθέσιμα: {{task_title}}, {{user_name}}, {{team_name}}, {{date}}</p>
+                    </div>
+
+                    <!-- Design Settings -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Header Color Start</label>
+                            <div class="flex gap-2">
+                                <input type="color" x-model="currentTemplate.header_gradient_start"
+                                       class="w-12 h-12 rounded-lg cursor-pointer border border-gray-300">
+                                <input type="text" x-model="currentTemplate.header_gradient_start"
+                                       class="flex-1 px-4 py-3 rounded-xl border border-gray-300">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Header Color End</label>
+                            <div class="flex gap-2">
+                                <input type="color" x-model="currentTemplate.header_gradient_end"
+                                       class="w-12 h-12 rounded-lg cursor-pointer border border-gray-300">
+                                <input type="text" x-model="currentTemplate.header_gradient_end"
+                                       class="flex-1 px-4 py-3 rounded-xl border border-gray-300">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Header Icon</label>
+                            <input type="text" x-model="currentTemplate.header_icon"
+                                   placeholder="📧"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 text-2xl text-center">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Button Color</label>
+                            <div class="flex gap-2">
+                                <input type="color" x-model="currentTemplate.button_color"
+                                       class="w-12 h-12 rounded-lg cursor-pointer border border-gray-300">
+                                <input type="text" x-model="currentTemplate.button_color"
+                                       class="flex-1 px-4 py-3 rounded-xl border border-gray-300">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Button Text Color</label>
+                            <div class="flex gap-2">
+                                <input type="color" x-model="currentTemplate.button_text_color"
+                                       class="w-12 h-12 rounded-lg cursor-pointer border border-gray-300">
+                                <input type="text" x-model="currentTemplate.button_text_color"
+                                       class="flex-1 px-4 py-3 rounded-xl border border-gray-300">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Content Template with WYSIWYG Editor -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Email Content (Visual Editor)</label>
+                        
+                        <!-- Editor Mode Tabs -->
+                        <div class="flex gap-2 mb-3">
+                            <button type="button" @click="editorMode = 'visual'; initTinyMCE()"
+                                    :class="editorMode === 'visual' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'"
+                                    class="px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                                <i class="fas fa-edit"></i> Visual
+                            </button>
+                            <button type="button" @click="switchToHtml()"
+                                    :class="editorMode === 'html' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-700'"
+                                    class="px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                                <i class="fas fa-code"></i> HTML
+                            </button>
+                        </div>
+
+                        <!-- Visual Editor (TinyMCE) -->
+                        <div x-show="editorMode === 'visual'" x-cloak>
+                            <div id="tinymce-container" class="border border-gray-300 rounded-xl overflow-hidden">
+                                <textarea id="email-editor"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- HTML Editor -->
+                        <div x-show="editorMode === 'html'" x-cloak>
+                            <textarea x-model="currentTemplate.content_template" rows="15"
+                                      id="html-editor"
+                                      placeholder="<p>Email content with {{placeholders}}...</p>"
+                                      class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 font-mono text-sm"></textarea>
+                        </div>
+
+                        <!-- Dynamic Fields Panel -->
+                        <div class="mt-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fas fa-magic text-purple-600"></i>
+                                <span class="font-semibold text-gray-700">Dynamic Fields</span>
+                                <span class="text-xs text-gray-500">(click to insert)</span>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <template x-for="field in availableFields" :key="field">
+                                    <button type="button" @click="insertFieldToEditor(field)"
+                                            class="px-3 py-2 bg-white border border-purple-300 text-purple-700 rounded-lg text-sm hover:bg-purple-50 hover:border-purple-400 transition flex items-center gap-1 shadow-sm">
+                                        <i class="fas fa-plus-circle text-xs"></i>
+                                        <span x-text="'{{' + field + '}}'"></span>
+                                    </button>
+                                </template>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                These fields will be replaced with actual data when the email is sent.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Messages -->
+                    <div x-show="templateError" x-transition class="bg-red-100 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-xl" x-text="templateError"></div>
+                    <div x-show="templateSuccess" x-transition class="bg-green-100 border-l-4 border-green-500 text-green-700 px-4 py-3 rounded-xl" x-text="templateSuccess"></div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" @click="saveTemplate" :disabled="savingTemplate"
+                                class="px-8 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                            <span x-show="!savingTemplate"><i class="fas fa-save mr-2"></i>Αποθήκευση Template</span>
+                            <span x-show="savingTemplate"><i class="fas fa-spinner fa-spin mr-2"></i>Αποθήκευση...</span>
+                        </button>
+                        <button type="button" @click="previewTemplate"
+                                class="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                            <i class="fas fa-eye mr-2"></i>Preview
+                        </button>
+                        <button type="button" @click="resetTemplate"
+                                class="px-8 py-3 bg-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-300 transition">
+                            <i class="fas fa-undo mr-2"></i>Reset to Default
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Panel -->
+            <div x-show="showPreview" class="glass rounded-3xl p-8">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">👁️ Email Preview</h3>
+                    <button @click="showPreview = false" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="border border-gray-200 rounded-xl overflow-hidden">
+                    <iframe id="previewFrame" class="w-full h-[600px] bg-white"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function settingsPage() {
+    return {
+        currentUser: JSON.parse(localStorage.getItem('user') || '{}'),
+        isAdmin: false,
+        activeTab: 'email',
+        
+        // Email Settings (SMTP)
+        emailSettings: {
+            smtp_host: 'smtp.gmail.com',
+            smtp_port: 587,
+            smtp_encryption: 'tls',
+            smtp_username: '',
+            smtp_password: '',
+            smtp_from_email: '',
+            smtp_from_name: 'TaskMesh Notifications',
+            notifications_enabled: false,
+            password_is_set: false
+        },
+        testEmailAddress: '',
+        savingEmail: false,
+        testingEmail: false,
+        emailError: '',
+        emailSuccess: '',
+        
+        // Email Preferences
+        preferences: {
+            notify_task_assigned: true,
+            notify_task_completed: true,
+            notify_subtask_completed: true,
+            notify_comment_added: true,
+            notify_deadline_reminder: true,
+            notify_team_invitation: true,
+            notify_direct_message: true,
+            team_filter: 'all',
+            selected_teams: [],
+            email_digest: 'instant'
+        },
+        teams: [],
+        savingPreferences: false,
+        preferencesError: '',
+        preferencesSuccess: '',
+        
+        // Cron Job Settings
+        cronFrequency: 'daily9am',
+        
+        // Email Templates
+        selectedTemplateType: '',
+        currentTemplate: {
+            subject: '',
+            header_gradient_start: '#667eea',
+            header_gradient_end: '#764ba2',
+            header_icon: '📧',
+            button_color: '#667eea',
+            button_text_color: '#ffffff',
+            content_template: ''
+        },
+        availableFields: ['user_name', 'task_title', 'team_name', 'deadline', 'message', 'sender_name', 'action_url', 'button_text', 'date', 'subtask_title'],
+        savingTemplate: false,
+        templateError: '',
+        templateSuccess: '',
+        showPreview: false,
+        editorMode: 'visual',
+        tinyMCEInitialized: false,
+
+        async init() {
+            this.isAdmin = this.currentUser.role === 'ADMIN';
+            if (!this.isAdmin) return;
+
+            await this.loadEmailSettings();
+            await this.loadPreferences();
+            await this.loadTeams();
+        },
+
+        async loadEmailSettings() {
+            try {
+                const settings = await apiRequest('/settings/email.php');
+                this.emailSettings = settings;
+                this.emailSettings.smtp_password = '';
+            } catch (err) {
+                console.error('Error loading email settings:', err);
+            }
+        },
+
+        async saveEmailSettings() {
+            this.savingEmail = true;
+            this.emailError = '';
+            this.emailSuccess = '';
+
+            try {
+                const dataToSend = {...this.emailSettings};
+                if (!dataToSend.smtp_password) {
+                    delete dataToSend.smtp_password;
+                }
+                
+                const result = await apiRequest('/settings/email.php', {
+                    method: 'PUT',
+                    body: JSON.stringify(dataToSend)
+                });
+                this.emailSettings = result;
+                this.emailSettings.smtp_password = '';
+                
+                this.emailSuccess = '✓ Settings saved successfully!';
+                setTimeout(() => this.emailSuccess = '', 3000);
+            } catch (err) {
+                this.emailError = err.message || 'Failed to save settings';
+            } finally {
+                this.savingEmail = false;
+            }
+        },
+
+        async testEmail() {
+            if (!this.testEmailAddress) return;
+
+            this.testingEmail = true;
+            this.emailError = '';
+            this.emailSuccess = '';
+
+            try {
+                await apiRequest('/settings/test-email.php', {
+                    method: 'POST',
+                    body: JSON.stringify({ test_email: this.testEmailAddress })
+                });
+                
+                this.emailSuccess = '✓ Test email sent to ' + this.testEmailAddress;
+                setTimeout(() => this.emailSuccess = '', 5000);
+            } catch (err) {
+                this.emailError = '✗ Failed: ' + (err.message || 'Check SMTP settings');
+            } finally {
+                this.testingEmail = false;
+            }
+        },
+
+        async loadPreferences() {
+            try {
+                const prefs = await apiRequest('/settings/email-preferences.php');
+                if (prefs && prefs.id) {
+                    this.preferences = {
+                        ...this.preferences,
+                        ...prefs,
+                        selected_teams: prefs.team_filter !== 'all' ? prefs.team_filter.split(',').map(Number) : []
+                    };
+                    this.preferences.team_filter = prefs.team_filter === 'all' ? 'all' : 'selected';
+                }
+            } catch (err) {
+                console.error('Error loading preferences:', err);
+            }
+        },
+
+        async loadTeams() {
+            try {
+                this.teams = await apiRequest('/teams/index.php');
+            } catch (err) {
+                console.error('Error loading teams:', err);
+            }
+        },
+
+        async savePreferences() {
+            this.savingPreferences = true;
+            this.preferencesError = '';
+            this.preferencesSuccess = '';
+
+            try {
+                const dataToSend = {
+                    ...this.preferences,
+                    team_filter: this.preferences.team_filter === 'all' ? 'all' : this.preferences.selected_teams.join(',')
+                };
+                delete dataToSend.selected_teams;
+                
+                await apiRequest('/settings/email-preferences.php', {
+                    method: 'PUT',
+                    body: JSON.stringify(dataToSend)
+                });
+                
+                this.preferencesSuccess = '✓ Preferences saved!';
+                setTimeout(() => this.preferencesSuccess = '', 3000);
+            } catch (err) {
+                this.preferencesError = err.message || 'Failed to save preferences';
+            } finally {
+                this.savingPreferences = false;
+            }
+        },
+
+        async loadTemplate() {
+            if (!this.selectedTemplateType) return;
+
+            try {
+                const template = await apiRequest(`/settings/email-templates.php?type=${this.selectedTemplateType}`);
+                if (template && template.id) {
+                    this.currentTemplate = template;
+                    
+                    // Update TinyMCE content if initialized
+                    if (this.editorMode === 'visual') {
+                        await this.initTinyMCE();
+                        this.$nextTick(() => {
+                            if (window.tinymce && tinymce.get('email-editor')) {
+                                tinymce.get('email-editor').setContent(template.content_template || '');
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading template:', err);
+                this.currentTemplate = {
+                    subject: '',
+                    header_gradient_start: '#667eea',
+                    header_gradient_end: '#764ba2',
+                    header_icon: '📧',
+                    button_color: '#667eea',
+                    button_text_color: '#ffffff',
+                    content_template: ''
+                };
+            }
+        },
+
+        insertField(field) {
+            const textarea = document.querySelector('textarea[x-model="currentTemplate.content_template"]');
+            const cursorPos = textarea.selectionStart;
+            const text = this.currentTemplate.content_template;
+            this.currentTemplate.content_template = text.slice(0, cursorPos) + '{{' + field + '}}' + text.slice(cursorPos);
+        },
+
+        // TinyMCE WYSIWYG Editor Functions
+        async initTinyMCE() {
+            // Load TinyMCE if not already loaded
+            if (!window.tinymce) {
+                await this.loadTinyMCEScript();
+            }
+
+            // Remove existing instance if any
+            if (tinymce.get('email-editor')) {
+                tinymce.get('email-editor').remove();
+            }
+
+            // Initialize TinyMCE
+            tinymce.init({
+                selector: '#email-editor',
+                height: 400,
+                menubar: true,
+                plugins: [
+                    'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                    'insertdatetime', 'media', 'table', 'help', 'wordcount', 'emoticons',
+                    'codesample', 'quickbars', 'visualchars'
+                ],
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | ' +
+                         'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
+                         'bullist numlist outdent indent | link image media table | ' +
+                         'emoticons charmap | removeformat | code fullscreen | help',
+                toolbar_mode: 'sliding',
+                quickbars_selection_toolbar: 'bold italic | quicklink h2 h3 blockquote quickimage quicktable',
+                contextmenu: 'link image table',
+                content_style: `
+                    body { 
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+                        font-size: 14px; 
+                        line-height: 1.6;
+                        color: #374151;
+                        padding: 15px;
+                    }
+                    p { margin: 0 0 1em 0; }
+                    a { color: #3b82f6; }
+                    .dynamic-field { 
+                        background: linear-gradient(135deg, #a855f7, #7c3aed);
+                        color: white;
+                        padding: 2px 8px;
+                        border-radius: 4px;
+                        font-size: 12px;
+                        display: inline-block;
+                    }
+                `,
+                font_family_formats: 'Arial=arial,helvetica,sans-serif; Courier New=courier new,courier,monospace; Georgia=georgia,palatino; Helvetica=helvetica; Times New Roman=times new roman,times; Verdana=verdana,geneva',
+                font_size_formats: '8pt 10pt 12pt 14pt 16pt 18pt 24pt 36pt 48pt',
+                block_formats: 'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4; Preformatted=pre',
+                color_map: [
+                    '667eea', 'Primary Blue',
+                    '764ba2', 'Primary Purple',
+                    '10b981', 'Success Green',
+                    'f59e0b', 'Warning Yellow',
+                    'ef4444', 'Error Red',
+                    '3b82f6', 'Blue',
+                    '8b5cf6', 'Purple',
+                    '6b7280', 'Gray',
+                    '374151', 'Dark Gray',
+                    '111827', 'Black',
+                    'ffffff', 'White'
+                ],
+                setup: (editor) => {
+                    // Set initial content
+                    editor.on('init', () => {
+                        editor.setContent(this.currentTemplate.content_template || '');
+                        this.tinyMCEInitialized = true;
+                    });
+
+                    // Update model on change
+                    editor.on('change keyup', () => {
+                        this.currentTemplate.content_template = editor.getContent();
+                    });
+
+                    // Add custom button for dynamic fields
+                    editor.ui.registry.addMenuButton('dynamicfields', {
+                        text: '⚡ Fields',
+                        tooltip: 'Insert Dynamic Field',
+                        fetch: (callback) => {
+                            const items = this.availableFields.map(field => ({
+                                type: 'menuitem',
+                                text: `{{${field}}}`,
+                                onAction: () => {
+                                    editor.insertContent(`<span class="dynamic-field">{{${field}}}</span>&nbsp;`);
+                                }
+                            }));
+                            callback(items);
+                        }
+                    });
+
+                    // Append to toolbar
+                    editor.on('init', () => {
+                        const toolbar = editor.getContainer().querySelector('.tox-toolbar__primary');
+                        if (toolbar) {
+                            // Dynamic fields button is part of the toolbar via setup
+                        }
+                    });
+                },
+                // Add dynamic fields button to toolbar
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | ' +
+                         'forecolor backcolor | alignleft aligncenter alignright alignjustify | ' +
+                         'bullist numlist outdent indent | link image media table | ' +
+                         'emoticons charmap | dynamicfields | removeformat | code fullscreen | help',
+                promotion: false,
+                branding: false
+            });
+        },
+
+        async loadTinyMCEScript() {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                // Using jsDelivr CDN for TinyMCE 6 (no API key required)
+                script.src = 'https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        },
+
+        switchToHtml() {
+            // Save content from TinyMCE before switching
+            if (window.tinymce && tinymce.get('email-editor')) {
+                this.currentTemplate.content_template = tinymce.get('email-editor').getContent();
+            }
+            this.editorMode = 'html';
+        },
+
+        insertFieldToEditor(field) {
+            if (this.editorMode === 'visual' && window.tinymce && tinymce.get('email-editor')) {
+                tinymce.get('email-editor').insertContent(`<span class="dynamic-field">{{${field}}}</span>&nbsp;`);
+            } else {
+                // HTML mode - insert at cursor position
+                const textarea = document.getElementById('html-editor');
+                if (textarea) {
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const text = this.currentTemplate.content_template;
+                    const fieldText = `{{${field}}}`;
+                    this.currentTemplate.content_template = text.substring(0, start) + fieldText + text.substring(end);
+                    
+                    // Set cursor position after inserted field
+                    this.$nextTick(() => {
+                        textarea.focus();
+                        textarea.setSelectionRange(start + fieldText.length, start + fieldText.length);
+                    });
+                }
+            }
+        },
+
+        updateEditorContent() {
+            // Sync content when switching to visual mode
+            if (this.editorMode === 'visual' && window.tinymce && tinymce.get('email-editor')) {
+                tinymce.get('email-editor').setContent(this.currentTemplate.content_template || '');
+            }
+        },
+
+        async saveTemplate() {
+            this.savingTemplate = true;
+            this.templateError = '';
+            this.templateSuccess = '';
+
+            // Get content from TinyMCE if in visual mode
+            if (this.editorMode === 'visual' && window.tinymce && tinymce.get('email-editor')) {
+                this.currentTemplate.content_template = tinymce.get('email-editor').getContent();
+            }
+
+            try {
+                await apiRequest('/settings/email-templates.php', {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        template_type: this.selectedTemplateType,
+                        ...this.currentTemplate
+                    })
+                });
+                
+                this.templateSuccess = '✓ Template saved successfully!';
+                setTimeout(() => this.templateSuccess = '', 3000);
+            } catch (err) {
+                this.templateError = err.message || 'Failed to save template';
+            } finally {
+                this.savingTemplate = false;
+            }
+        },
+
+        previewTemplate() {
+            // Get content from TinyMCE if in visual mode
+            if (this.editorMode === 'visual' && window.tinymce && tinymce.get('email-editor')) {
+                this.currentTemplate.content_template = tinymce.get('email-editor').getContent();
+            }
+            
+            const previewHtml = this.generatePreviewHtml();
+            const iframe = document.getElementById('previewFrame');
+            iframe.srcdoc = previewHtml;
+            this.showPreview = true;
+        },
+
+        generatePreviewHtml() {
+            const sampleData = {
+                user_name: 'Γιάννης Παπαδόπουλος',
+                task_title: 'Sample Task Title',
+                team_name: 'Development Team',
+                deadline: '30/11/2025',
+                message: 'Αυτό είναι ένα δοκιμαστικό μήνυμα.',
+                sender_name: 'Μαρία Κωνσταντίνου',
+                action_url: '#',
+                button_text: 'Δες το Task',
+                date: new Date().toLocaleDateString('el-GR'),
+                subtask_title: 'Sample Subtask'
+            };
+
+            let content = this.currentTemplate.content_template;
+            Object.keys(sampleData).forEach(key => {
+                content = content.replace(new RegExp(`{{${key}}}`, 'g'), sampleData[key]);
+            });
+
+            return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }</style>
+            </head>
+            <body>
+                <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div style="background: linear-gradient(135deg, ${this.currentTemplate.header_gradient_start} 0%, ${this.currentTemplate.header_gradient_end} 100%); padding: 40px; text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">${this.currentTemplate.header_icon}</div>
+                        <h1 style="color: white; margin: 0; font-size: 24px;">${this.currentTemplate.subject.replace(/{{(\w+)}}/g, (m, key) => sampleData[key] || m)}</h1>
+                    </div>
+                    <div style="padding: 30px;">
+                        ${content}
+                        <div style="text-align: center; margin-top: 30px;">
+                            <a href="#" style="display: inline-block; background: ${this.currentTemplate.button_color}; color: ${this.currentTemplate.button_text_color}; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600;">Δες Λεπτομέρειες</a>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>`;
+        },
+
+        async resetTemplate() {
+            if (!confirm('Reset template to default? This cannot be undone.')) return;
+            
+            try {
+                await apiRequest(`/settings/email-templates.php?type=${this.selectedTemplateType}&reset=1`, {
+                    method: 'DELETE'
+                });
+                await this.loadTemplate();
+                
+                // Update TinyMCE content
+                if (this.editorMode === 'visual' && window.tinymce && tinymce.get('email-editor')) {
+                    tinymce.get('email-editor').setContent(this.currentTemplate.content_template || '');
+                }
+                
+                this.templateSuccess = '✓ Template reset to default!';
+                setTimeout(() => this.templateSuccess = '', 3000);
+            } catch (err) {
+                this.templateError = 'Failed to reset template';
+            }
+        },
+
+        // Cron Job Helper Functions
+        getAutoBaseUrl() {
+            // Auto-detect base URL from current location
+            const origin = window.location.origin;
+            const pathname = window.location.pathname;
+            // Extract TaskMesh path (e.g., /TaskMesh or /app)
+            const match = pathname.match(/^\/[^\/]+/);
+            const basePath = match ? match[0] : '/TaskMesh';
+            return origin + basePath;
+        },
+
+        isLocalhost() {
+            try {
+                const hostname = window.location.hostname;
+                return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
+            } catch (e) {
+                return true; // Default to localhost if error
+            }
+        },
+
+        getServerInfo() {
+            try {
+                const baseUrl = this.getAutoBaseUrl();
+                const url = new URL(baseUrl);
+                const hostname = url.hostname;
+                const pathname = url.pathname || '/TaskMesh';
+                
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    // Windows XAMPP localhost
+                    return {
+                        type: 'localhost',
+                        phpPath: 'C:\\xampp\\php\\php.exe',
+                        scriptPath: `C:\\xampp\\htdocs${pathname.replace(/\//g, '\\\\')}\\cron\\deadline_reminders.php`,
+                        logPath: `C:\\xampp\\htdocs${pathname.replace(/\//g, '\\\\')}\\cron\\cron.log`,
+                        description: 'Windows XAMPP (localhost)'
+                    };
+                } else {
+                    // Production Linux server - extract domain for username hint
+                    const domainParts = hostname.split('.');
+                    const usernameHint = domainParts[0].replace(/[^a-z0-9]/gi, '').substring(0, 8);
+                    
+                    return {
+                        type: 'production',
+                        phpPath: '/usr/bin/php',
+                        scriptPath: `/home/${usernameHint}_user/public_html${pathname}/cron/deadline_reminders.php`,
+                        logPath: `/home/${usernameHint}_user/public_html${pathname}/cron/cron.log`,
+                        description: `Production Server (${hostname})`,
+                        domain: hostname
+                    };
+                }
+            } catch (e) {
+                // Default fallback
+                return {
+                    type: 'localhost',
+                    phpPath: 'C:\\xampp\\php\\php.exe',
+                    scriptPath: 'C:\\xampp\\htdocs\\TaskMesh\\cron\\deadline_reminders.php',
+                    logPath: 'C:\\xampp\\htdocs\\TaskMesh\\cron\\cron.log',
+                    description: 'Windows XAMPP (localhost)'
+                };
+            }
+        },
+
+        getCronCommand() {
+            const server = this.getServerInfo();
+            
+            const schedules = {
+                'hourly': '0 * * * *',
+                'every30min': '0,30 * * * *',
+                'daily9am': '0 9 * * *',
+                'daily9pm': '0 21 * * *',
+                'twice': '0 9,17 * * *',
+                'every6hours': '0 */6 * * *'
+            };
+            
+            const schedule = schedules[this.cronFrequency] || schedules['daily9am'];
+            
+            if (server.type === 'localhost') {
+                // Windows Task Scheduler command (for reference)
+                return `# Windows - Χρησιμοποιήστε Task Scheduler:\n"${server.phpPath}" "${server.scriptPath}"`;
+            } else {
+                // Linux cron command
+                return `${schedule} ${server.phpPath} ${server.scriptPath} >> ${server.logPath} 2>&1`;
+            }
+        },
+
+        getCronDescription() {
+            const descriptions = {
+                'hourly': 'Κάθε ώρα στο λεπτό 0 (00:00, 01:00, 02:00...)',
+                'every30min': 'Κάθε 30 λεπτά (00:00, 00:30, 01:00...)',
+                'daily9am': 'Μία φορά την ημέρα στις 09:00 πμ',
+                'daily9pm': 'Μία φορά την ημέρα στις 21:00 (9 μμ)',
+                'twice': 'Δύο φορές την ημέρα στις 09:00 και 17:00',
+                'every6hours': 'Κάθε 6 ώρες (00:00, 06:00, 12:00, 18:00)'
+            };
+            return descriptions[this.cronFrequency] || descriptions['daily9am'];
+        },
+
+        getServerType() {
+            const server = this.getServerInfo();
+            return server.description;
+        },
+
+        copyCronCommand() {
+            const command = this.getCronCommand();
+            navigator.clipboard.writeText(command).then(() => {
+                // Show temporary success message
+                const btn = event.target.closest('button');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check text-green-400"></i> <span class="ml-1 text-xs">Copied!</span>';
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Αντιγράψτε χειροκίνητα: ' + command);
+            });
+        }
+    }
+}
+</script>

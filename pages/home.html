@@ -1,0 +1,262 @@
+<div x-data="homePage()" x-init="loadStats()" class="space-y-6">
+    
+    <!-- Welcome Section -->
+    <div class="glass rounded-3xl p-8 card-hover">
+        <h1 class="text-3xl font-bold text-gray-800 mb-2">
+            Καλώς ήρθες, <span class="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" x-text="user.first_name || 'φίλε'"></span>! 👋
+        </h1>
+        <p class="text-gray-600">Ας δούμε τι έχουμε σήμερα...</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Active Tasks -->
+        <div class="glass rounded-3xl p-6 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <i class="fas fa-clipboard-list text-white text-xl"></i>
+                </div>
+                <span class="text-3xl font-bold text-gray-800" x-text="stats.activeTasks"></span>
+            </div>
+            <h3 class="text-gray-600 font-semibold">Ενεργές Εργασίες</h3>
+            <p class="text-sm text-gray-500 mt-1">TODO + IN PROGRESS</p>
+        </div>
+
+        <!-- Teams -->
+        <div class="glass rounded-3xl p-6 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center">
+                    <i class="fas fa-users text-white text-xl"></i>
+                </div>
+                <span class="text-3xl font-bold text-gray-800" x-text="stats.teams"></span>
+            </div>
+            <h3 class="text-gray-600 font-semibold">Ομάδες</h3>
+            <p class="text-sm text-gray-500 mt-1">Συμμετέχεις σε</p>
+        </div>
+
+        <!-- Completed Tasks -->
+        <div class="glass rounded-3xl p-6 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                    <i class="fas fa-check-circle text-white text-xl"></i>
+                </div>
+                <span class="text-3xl font-bold text-gray-800" x-text="stats.completedTasks"></span>
+            </div>
+            <h3 class="text-gray-600 font-semibold">Ολοκληρωμένες</h3>
+            <p class="text-sm text-gray-500 mt-1">Αυτόν τον μήνα</p>
+        </div>
+
+        <!-- Performance -->
+        <div class="glass rounded-3xl p-6 card-hover">
+            <div class="flex items-center justify-between mb-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+                    <i class="fas fa-chart-line text-white text-xl"></i>
+                </div>
+                <span class="text-3xl font-bold text-gray-800"><span x-text="stats.performance"></span>%</span>
+            </div>
+            <h3 class="text-gray-600 font-semibold">Απόδοση</h3>
+            <p class="text-sm text-gray-500 mt-1">Completion rate</p>
+        </div>
+    </div>
+
+    <!-- Recent Tasks & Upcoming Deadlines -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Recent Tasks -->
+        <div class="glass rounded-3xl p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-clock text-purple-600"></i>
+                Πρόσφατες Εργασίες
+            </h2>
+            
+            <div x-show="recentTasks.length === 0" class="text-center py-8 text-gray-500">
+                <i class="fas fa-inbox text-4xl mb-2 opacity-50"></i>
+                <p>Δεν υπάρχουν πρόσφατες εργασίες</p>
+            </div>
+
+            <div class="space-y-3">
+                <template x-for="task in recentTasks" :key="task.id">
+                    <div @click="goToTasks()" class="p-4 bg-white bg-opacity-50 rounded-xl hover:bg-opacity-70 transition cursor-pointer">
+                        <div class="flex items-start justify-between mb-2">
+                            <h3 class="font-semibold text-gray-800" x-text="task.title"></h3>
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold"
+                                  :class="{
+                                      'bg-yellow-100 text-yellow-700': task.status === 'TODO',
+                                      'bg-blue-100 text-blue-700': task.status === 'IN_PROGRESS',
+                                      'bg-purple-100 text-purple-700': task.status === 'IN_REVIEW',
+                                      'bg-green-100 text-green-700': task.status === 'COMPLETED'
+                                  }"
+                                  x-text="task.status"></span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-3" x-text="task.description?.substring(0, 60) + '...'"></p>
+                        
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-gray-200 rounded-full h-2 mb-2">
+                            <div class="h-2 rounded-full transition-all"
+                                 :class="{
+                                     'bg-yellow-500': task.status === 'TODO',
+                                     'bg-blue-500': task.status === 'IN_PROGRESS',
+                                     'bg-purple-500': task.status === 'IN_REVIEW',
+                                     'bg-green-500': task.status === 'COMPLETED'
+                                 }"
+                                 :style="`width: ${task.status === 'TODO' ? 10 : task.status === 'IN_PROGRESS' ? 50 : task.status === 'IN_REVIEW' ? 80 : 100}%`"></div>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-xs text-gray-500">
+                            <i class="fas fa-user"></i>
+                            <span x-text="task.assignee_name || 'Χωρίς ανάθεση'"></span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Upcoming Deadlines -->
+        <div class="glass rounded-3xl p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-calendar-alt text-pink-600"></i>
+                Επερχόμενα Deadlines
+            </h2>
+            
+            <div x-show="upcomingDeadlines.length === 0" class="text-center py-8 text-gray-500">
+                <i class="fas fa-calendar-check text-4xl mb-2 opacity-50"></i>
+                <p>Δεν υπάρχουν επερχόμενα deadlines</p>
+            </div>
+
+            <div class="space-y-3">
+                <template x-for="task in upcomingDeadlines" :key="task.id">
+                    <div @click="goToTasks()" class="p-4 bg-white bg-opacity-50 rounded-xl hover:bg-opacity-70 transition cursor-pointer">
+                        <div class="flex items-start justify-between mb-2">
+                            <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full"
+                                      :class="{
+                                          'bg-green-500': task.daysUntil > 3,
+                                          'bg-yellow-500': task.daysUntil >= 1 && task.daysUntil <= 3,
+                                          'bg-red-500': task.daysUntil < 1
+                                      }"></span>
+                                <span x-text="task.title"></span>
+                            </h3>
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold"
+                                  :class="{
+                                      'bg-red-100 text-red-700': task.priority === 'URGENT',
+                                      'bg-orange-100 text-orange-700': task.priority === 'HIGH',
+                                      'bg-blue-100 text-blue-700': task.priority === 'MEDIUM',
+                                      'bg-gray-100 text-gray-700': task.priority === 'LOW'
+                                  }"
+                                  x-text="task.priority"></span>
+                        </div>
+                        
+                        <div class="flex items-center gap-4 text-sm text-gray-600">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-calendar"></i>
+                                <span x-text="formatDate(task.deadline)"></span>
+                            </span>
+                            <span class="flex items-center gap-1 font-semibold"
+                                  :class="{
+                                      'text-green-600': task.daysUntil > 3,
+                                      'text-yellow-600': task.daysUntil >= 1 && task.daysUntil <= 3,
+                                      'text-red-600': task.daysUntil < 1
+                                  }">
+                                <span x-text="task.daysUntil === 0 ? 'Σήμερα!' : task.daysUntil === 1 ? 'Αύριο' : `Σε ${task.daysUntil} μέρες`"></span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="glass rounded-3xl p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Γρήγορες Ενέργειες</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button @click="goToTasks()" class="p-4 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
+                <i class="fas fa-plus text-2xl mb-2"></i>
+                <p class="font-semibold">Νέα Εργασία</p>
+            </button>
+            <button @click="goToTeams()" class="p-4 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
+                <i class="fas fa-users text-2xl mb-2"></i>
+                <p class="font-semibold">Νέα Ομάδα</p>
+            </button>
+            <button @click="goToChat()" class="p-4 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
+                <i class="fas fa-comments text-2xl mb-2"></i>
+                <p class="font-semibold">Chat</p>
+            </button>
+            <button @click="goToTasks()" class="p-4 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
+                <i class="fas fa-chart-bar text-2xl mb-2"></i>
+                <p class="font-semibold">Αναφορές</p>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function homePage() {
+    return {
+        user: JSON.parse(localStorage.getItem('user') || '{}'),
+        stats: {
+            activeTasks: 0,
+            teams: 0,
+            completedTasks: 0,
+            performance: 0
+        },
+        recentTasks: [],
+        upcomingDeadlines: [],
+
+        goToTasks() {
+            window.location.hash = 'tasks';
+        },
+        
+        goToTeams() {
+            window.location.hash = 'teams';
+        },
+        
+        goToChat() {
+            window.location.hash = 'chat';
+        },
+
+        async loadStats() {
+            try {
+                // Fetch tasks
+                const tasks = await apiRequest('/tasks/index.php');
+                
+                // Calculate stats
+                this.stats.activeTasks = tasks.filter(t => ['TODO', 'IN_PROGRESS', 'IN_REVIEW'].includes(t.status)).length;
+                this.stats.completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
+                this.stats.performance = tasks.length > 0 ? Math.round((this.stats.completedTasks / tasks.length) * 100) : 0;
+                
+                // Recent tasks (last 5, sorted by created_at)
+                this.recentTasks = tasks
+                    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                    .slice(0, 5);
+                
+                // Upcoming deadlines (within 7 days)
+                const now = new Date();
+                this.upcomingDeadlines = tasks
+                    .filter(t => t.deadline && t.status !== 'COMPLETED')
+                    .map(t => {
+                        const deadline = new Date(t.deadline);
+                        const diffTime = deadline - now;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                        return { ...t, daysUntil: diffDays };
+                    })
+                    .filter(t => t.daysUntil >= 0 && t.daysUntil <= 7)
+                    .sort((a, b) => a.daysUntil - b.daysUntil)
+                    .slice(0, 5);
+                
+                // Fetch teams
+                const teams = await apiRequest('/teams/index.php');
+                this.stats.teams = teams.length;
+                
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        },
+
+        formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('el-GR', { day: 'numeric', month: 'short' });
+        }
+    }
+}
+</script>

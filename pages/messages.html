@@ -1,0 +1,400 @@
+<!-- Direct Messages Page -->
+<div x-data="directMessages()" x-init="init()" class="h-full flex flex-col">
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Conversations Sidebar -->
+        <div class="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <div class="p-6 border-b border-gray-200">
+                <h1 class="text-2xl font-bold text-gray-800">Μηνύματα</h1>
+            </div>
+
+            <!-- Search User to Start Conversation -->
+            <div class="p-4 border-b border-gray-200">
+                <div class="relative">
+                    <input type="text" 
+                           x-model="searchQuery"
+                           @input="filterUsers"
+                           @focus="showUserSuggestions = true; filterUsers()"
+                           @keydown.down.prevent="navigateSuggestions(1)"
+                           @keydown.up.prevent="navigateSuggestions(-1)"
+                           @keydown.enter.prevent="selectHighlightedUser"
+                           @keydown.escape="showUserSuggestions = false"
+                           placeholder="Αναζήτηση χρήστη για DM..."
+                           class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                    <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                </div>
+                
+                <!-- User Suggestions Dropdown -->
+                <div x-show="showUserSuggestions && filteredUsers.length > 0" 
+                     @click.away="showUserSuggestions = false"
+                     class="absolute z-50 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto">
+                    <template x-for="(user, index) in filteredUsers" :key="user.id">
+                        <button @click="startConversationFromSearch(user)" 
+                                :class="{'bg-purple-50': highlightedIndex === index}"
+                                class="w-full p-3 hover:bg-purple-50 transition flex items-center gap-3 text-left border-b border-gray-100">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
+                                <span x-text="user.first_name[0] + user.last_name[0]"></span>
+                            </div>
+                            <div class="flex-1">
+                                <p class="font-semibold text-gray-800" x-text="user.first_name + ' ' + user.last_name"></p>
+                                <p class="text-xs text-gray-600" x-text="user.email"></p>
+                                <span class="text-xs text-purple-600" x-text="user.role"></span>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Manager's Members Quick Access -->
+            <div x-show="user.role === 'MANAGER' && myMembers.length > 0" class="p-4 border-b border-gray-200">
+                <h3 class="text-sm font-semibold text-gray-600 mb-2">Τα Μέλη μου</h3>
+                <div class="space-y-1">
+                    <template x-for="member in myMembers.slice(0, 5)" :key="member.id">
+                        <button @click="startConversationWithMember(member)" 
+                                class="w-full p-2 hover:bg-gray-50 rounded-lg text-left flex items-center gap-2 transition">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-xs font-bold">
+                                <span x-text="member.first_name[0] + member.last_name[0]"></span>
+                            </div>
+                            <span class="text-sm text-gray-700" x-text="member.first_name + ' ' + member.last_name"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Conversations List -->
+            <div class="flex-1 overflow-y-auto">
+                <template x-for="conv in conversations" :key="conv.user_id">
+                    <div class="relative group">
+                        <button @click="selectConversation(conv)" 
+                                :class="selectedUser?.id === conv.user_id ? 'bg-purple-50 border-l-4 border-purple-600' : 'hover:bg-gray-50'"
+                                class="w-full p-4 border-b border-gray-200 text-left transition">
+                            <div class="flex items-start gap-3">
+                                <div class="relative">
+                                    <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
+                                        <span x-text="conv.first_name[0] + conv.last_name[0]"></span>
+                                    </div>
+                                    <span x-show="conv.unread_count > 0" 
+                                          class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center"
+                                          x-text="conv.unread_count"></span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="font-semibold text-gray-800" x-text="conv.first_name + ' ' + conv.last_name"></span>
+                                        <span class="text-xs text-gray-500" x-text="formatMessageTime(conv.last_message_at)"></span>
+                                    </div>
+                                    <p class="text-sm text-gray-600 truncate" x-text="conv.last_message"></p>
+                                    <span class="text-xs text-purple-600" x-text="conv.role"></span>
+                                </div>
+                            </div>
+                        </button>
+                        <button @click.stop="deleteConversation(conv.user_id)" 
+                                class="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                                title="Διαγραφή συνομιλίας">
+                            <i class="fas fa-trash text-sm"></i>
+                        </button>
+                    </div>
+                </template>
+                
+                <div x-show="conversations.length === 0" class="p-8 text-center text-gray-500">
+                    <i class="fas fa-comments text-4xl mb-3 text-gray-300"></i>
+                    <p>Δεν υπάρχουν συνομιλίες ακόμα</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Messages Panel -->
+        <div class="flex-1 flex flex-col bg-gray-50">
+            <div x-show="!selectedUser" class="flex-1 flex items-center justify-center text-gray-400">
+                <div class="text-center">
+                    <i class="fas fa-comments text-6xl mb-4"></i>
+                    <p class="text-lg">Επιλέξτε μια συνομιλία για να ξεκινήσετε</p>
+                </div>
+            </div>
+
+            <div x-show="selectedUser" class="flex-1 flex flex-col">
+                <!-- Chat Header -->
+                <div class="bg-white border-b border-gray-200 p-4">
+                    <template x-if="selectedUser">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold">
+                                <span x-text="selectedUser.first_name[0] + selectedUser.last_name[0]"></span>
+                            </div>
+                            <div>
+                                <h2 class="font-bold text-gray-800" x-text="selectedUser.first_name + ' ' + selectedUser.last_name"></h2>
+                                <p class="text-sm text-gray-600" x-text="selectedUser.role"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Messages -->
+                <div x-ref="messagesContainer" class="flex-1 overflow-y-auto p-6 space-y-4">
+                    <template x-for="message in messages" :key="message.id">
+                        <div :class="message.sender_id === user.id ? 'flex justify-end' : 'flex justify-start'">
+                            <div :class="message.sender_id === user.id ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white'"
+                                 class="max-w-[70%] rounded-2xl p-4 shadow relative group">
+                                <button @click="deleteMessage(message.id)" 
+                                        x-show="user.role === 'ADMIN' || message.sender_id === user.id"
+                                        class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        :class="message.sender_id === user.id ? 'text-white hover:text-red-200' : 'text-gray-400 hover:text-red-500'"
+                                        title="Διαγραφή">
+                                    <i class="fas fa-trash text-xs"></i>
+                                </button>
+                                <div class="flex items-center justify-between gap-3 mb-2">
+                                    <span class="font-semibold text-sm" x-text="message.sender_id === user.id ? 'Εσείς' : (message.sender_first_name + ' ' + message.sender_last_name)"></span>
+                                    <span class="text-xs opacity-70" x-text="formatMessageTime(message.created_at)"></span>
+                                </div>
+                                <p class="break-words whitespace-pre-wrap" x-text="message.content"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Message Input -->
+                <div class="bg-white border-t border-gray-200 p-6">
+                    <form @submit.prevent="sendMessage" class="flex gap-3">
+                        <input type="text" 
+                               x-model="messageText"
+                               placeholder="Γράψτε ένα μήνυμα..."
+                               class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                        <button type="submit" 
+                                class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-lg transition">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function directMessages() {
+        return {
+            user: window.user,
+            conversations: [],
+            messages: [],
+            selectedUser: null,
+            messageText: '',
+            showNewConversation: false,
+            showUserSuggestions: false,
+            allUsers: [],
+            myMembers: [],
+            filteredUsers: [],
+            searchQuery: '',
+            highlightedIndex: 0,
+            
+            async init() {
+                await this.loadAllUsers(); // Load users immediately for autocomplete
+                await this.loadConversations();
+                if (this.user.role === 'MANAGER') {
+                    await this.loadMyMembers();
+                }
+                this.startPolling();
+            },
+
+            async loadAllUsers() {
+                try {
+                    this.allUsers = await apiRequest('/users/index.php');
+                    this.allUsers = this.allUsers.filter(u => u.id !== this.user.id && u.is_active);
+                } catch (err) {
+                    console.error('Error loading users:', err);
+                }
+            },
+
+            async loadMyMembers() {
+                try {
+                    this.myMembers = await apiRequest('/users/index.php');
+                } catch (err) {
+                    console.error('Error loading members:', err);
+                }
+            },
+
+            async loadConversations() {
+                try {
+                    this.conversations = await apiRequest('/messages/direct.php');
+                } catch (err) {
+                    console.error('Error loading conversations:', err);
+                }
+            },
+
+            async selectConversation(conv) {
+                this.selectedUser = {
+                    id: conv.user_id,
+                    first_name: conv.first_name,
+                    last_name: conv.last_name,
+                    avatar: conv.avatar,
+                    role: conv.role
+                };
+                await this.loadMessages();
+            },
+
+            async loadMessages() {
+                if (!this.selectedUser) return;
+                
+                try {
+                    this.messages = await apiRequest(`/messages/direct.php?user_id=${this.selectedUser.id}`);
+                    this.$nextTick(() => this.scrollToBottom());
+                    await this.loadConversations(); // Refresh to update unread count
+                } catch (err) {
+                    console.error('Error loading messages:', err);
+                }
+            },
+
+            async sendMessage() {
+                if (!this.messageText.trim() || !this.selectedUser) return;
+
+                const content = this.messageText;
+                this.messageText = '';
+
+                try {
+                    const message = await apiRequest('/messages/direct.php', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            receiver_id: this.selectedUser.id,
+                            content: content
+                        })
+                    });
+
+                    this.messages.push(message);
+                    this.$nextTick(() => this.scrollToBottom());
+                    await this.loadConversations(); // Refresh conversations list
+                } catch (err) {
+                    console.error('Error sending message:', err);
+                    this.messageText = content;
+                }
+            },
+
+            async deleteMessage(messageId) {
+                if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το μήνυμα;')) return;
+                
+                try {
+                    await apiRequest(`/messages/direct.php?id=${messageId}`, {
+                        method: 'DELETE'
+                    });
+                    this.messages = this.messages.filter(m => m.id !== messageId);
+                } catch (err) {
+                    alert('Σφάλμα: ' + err.message);
+                }
+            },
+
+            async deleteConversation(userId) {
+                const userName = this.conversations.find(c => c.user_id === userId);
+                const fullName = userName ? `${userName.first_name} ${userName.last_name}` : 'αυτόν τον χρήστη';
+                
+                if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε ολόκληρη τη συνομιλία με ${fullName};\n\nΌλα τα μηνύματα θα διαγραφούν οριστικά.`)) return;
+                
+                try {
+                    await apiRequest(`/messages/direct.php?conversation=${userId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    // Remove from conversations list
+                    this.conversations = this.conversations.filter(c => c.user_id !== userId);
+                    
+                    // If this was the selected conversation, clear selection
+                    if (this.selectedUser?.id === userId) {
+                        this.selectedUser = null;
+                        this.messages = [];
+                    }
+                } catch (err) {
+                    alert('Σφάλμα: ' + err.message);
+                }
+            },
+
+            filterUsers() {
+                const query = this.searchQuery.toLowerCase();
+                if (query.length === 0) {
+                    this.filteredUsers = [];
+                    this.showUserSuggestions = false;
+                    this.highlightedIndex = 0;
+                    return;
+                }
+                
+                this.filteredUsers = this.allUsers.filter(u => 
+                    u.first_name.toLowerCase().includes(query) || 
+                    u.last_name.toLowerCase().includes(query) ||
+                    u.email.toLowerCase().includes(query)
+                ).slice(0, 10); // Limit to 10 results
+                
+                this.showUserSuggestions = this.filteredUsers.length > 0;
+                this.highlightedIndex = 0;
+            },
+
+            navigateSuggestions(direction) {
+                if (!this.showUserSuggestions || this.filteredUsers.length === 0) return;
+                
+                this.highlightedIndex += direction;
+                if (this.highlightedIndex < 0) {
+                    this.highlightedIndex = this.filteredUsers.length - 1;
+                } else if (this.highlightedIndex >= this.filteredUsers.length) {
+                    this.highlightedIndex = 0;
+                }
+            },
+
+            selectHighlightedUser() {
+                if (this.showUserSuggestions && this.filteredUsers.length > 0) {
+                    this.startConversationFromSearch(this.filteredUsers[this.highlightedIndex]);
+                }
+            },
+
+            async startConversationFromSearch(user) {
+                this.selectedUser = user;
+                this.searchQuery = ''; // Clear search
+                this.showUserSuggestions = false;
+                this.filteredUsers = [];
+                this.highlightedIndex = 0;
+                await this.loadMessages();
+            },
+
+            async startConversation(user) {
+                this.selectedUser = user;
+                this.searchQuery = '';
+                this.showUserSuggestions = false;
+                await this.loadMessages();
+            },
+
+            async startConversationWithMember(member) {
+                this.selectedUser = member;
+                await this.loadMessages();
+            },
+
+            scrollToBottom() {
+                if (this.$refs.messagesContainer) {
+                    this.$refs.messagesContainer.scrollTop = this.$refs.messagesContainer.scrollHeight;
+                }
+            },
+
+            formatMessageTime(timestamp) {
+                if (!timestamp) return '';
+                const date = new Date(timestamp);
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                
+                if (messageDate.getTime() === today.getTime()) {
+                    return date.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+                } else if (messageDate.getTime() === today.getTime() - 86400000) {
+                    return 'Χθες ' + date.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+                } else {
+                    return date.toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit' });
+                }
+            },
+
+            startPolling() {
+                // Poll for new messages every 5 seconds if conversation is selected
+                setInterval(async () => {
+                    if (this.selectedUser) {
+                        const oldCount = this.messages.length;
+                        await this.loadMessages();
+                        // Only scroll if new messages arrived
+                        if (this.messages.length > oldCount) {
+                            this.$nextTick(() => this.scrollToBottom());
+                        }
+                    } else {
+                        await this.loadConversations();
+                    }
+                }, 5000);
+            }
+        }
+    }
+</script>

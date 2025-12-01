@@ -1,0 +1,392 @@
+<div x-data="chatPage()" x-init="init()" class="h-full">
+    
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
+        
+        <!-- Teams Sidebar -->
+        <div class="glass rounded-3xl p-6 overflow-auto">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Ομάδες</h2>
+            
+            <div x-show="teams.length === 0" class="text-center py-8 text-gray-500">
+                <i class="fas fa-users text-4xl mb-2 opacity-50"></i>
+                <p class="text-sm">Δεν υπάρχουν ομάδες</p>
+            </div>
+
+            <div class="space-y-2">
+                <template x-for="team in teams" :key="team.id">
+                    <div @click="selectTeam(team)" 
+                         :class="{'bg-white bg-opacity-70': selectedTeam?.id === team.id}"
+                         class="p-3 rounded-xl hover:bg-white hover:bg-opacity-50 cursor-pointer transition">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
+                                 :style="`background: ${team.color}`">
+                                <span x-text="team.name[0]"></span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-gray-800 truncate" x-text="team.name"></p>
+                                <p class="text-sm text-gray-500" x-text="`${team.member_count} μέλη`"></p>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="lg:col-span-3 glass rounded-3xl flex flex-col overflow-hidden">
+            
+            <!-- Chat Header -->
+            <div x-show="selectedTeam" class="p-6 border-b border-gray-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-xl"
+                         :style="`background: ${selectedTeam?.color}`">
+                        <span x-text="selectedTeam?.name?.[0]"></span>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800" x-text="selectedTeam?.name"></h2>
+                        <p class="text-sm text-gray-500" x-text="`${selectedTeam?.member_count} μέλη`"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No Team Selected -->
+            <div x-show="!selectedTeam" class="flex-1 flex items-center justify-center">
+                <div class="text-center text-gray-500">
+                    <i class="fas fa-comments text-6xl mb-4 opacity-50"></i>
+                    <p class="text-xl font-semibold">Επέλεξε μια ομάδα για chat</p>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div x-show="selectedTeam" class="flex-1 overflow-auto p-6 space-y-4" x-ref="messagesContainer">
+                <template x-for="message in messages" :key="message.id">
+                    <div :class="message.user_id === user.id ? 'flex justify-end' : 'flex justify-start'">
+                        <div :class="message.user_id === user.id ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white' : 'bg-white'"
+                             class="max-w-[70%] rounded-2xl p-4 shadow relative group">
+                            <button @click="deleteMessage(message.id)" 
+                                    x-show="user.role === 'ADMIN' || message.user_id === user.id"
+                                    class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    :class="message.user_id === user.id ? 'text-white hover:text-red-200' : 'text-gray-400 hover:text-red-500'"
+                                    title="Διαγραφή">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <span class="font-semibold text-sm" x-text="message.first_name + ' ' + message.last_name"></span>
+                                <span class="text-xs opacity-70" x-text="formatMessageTime(message.created_at)"></span>
+                            </div>
+                            <p class="break-words whitespace-pre-wrap" x-html="formatMentions(message.content)"></p>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Typing Indicator -->
+                <div x-show="typingUser" class="flex justify-start">
+                    <div class="bg-white rounded-2xl p-4 shadow">
+                        <p class="text-sm text-gray-600">
+                            <span x-text="typingUser"></span> γράφει
+                            <span class="inline-flex gap-1">
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></span>
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+                                <span class="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.4s"></span>
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message Input -->
+            <div x-show="selectedTeam" class="p-6 border-t border-gray-200 relative">
+                <!-- Mention Suggestions -->
+                <div x-show="showMentions && mentionSuggestions.length > 0" 
+                     class="absolute bottom-24 left-6 right-6 bg-white rounded-xl shadow-lg border border-gray-200 max-h-48 overflow-auto">
+                    <template x-for="(member, index) in mentionSuggestions" :key="member.id">
+                        <div @click="selectMention(member)" 
+                             :class="{'bg-purple-50': index === selectedMentionIndex}"
+                             class="px-4 py-3 hover:bg-purple-50 cursor-pointer transition flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold">
+                                <span x-text="member.first_name[0] + member.last_name[0]"></span>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-sm" x-text="member.first_name + ' ' + member.last_name"></p>
+                                <p class="text-xs text-gray-500" x-text="'@' + member.first_name.toLowerCase() + member.last_name.toLowerCase()"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <form @submit.prevent="sendMessage" class="flex gap-3">
+                    <input type="text" 
+                           x-model="messageText"
+                           @input="onMessageInput"
+                           @keydown.down.prevent="navigateMentions(1)"
+                           @keydown.up.prevent="navigateMentions(-1)"
+                           @keydown.enter.prevent="handleEnter"
+                           placeholder="Γράψε ένα μήνυμα... (χρησιμοποίησε @ για mention)"
+                           class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                    <button type="submit" 
+                            :disabled="!messageText.trim()"
+                            class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function chatPage() {
+    return {
+        user: JSON.parse(localStorage.getItem('user') || '{}'),
+        teams: [],
+        selectedTeam: null,
+        messages: [],
+        messageText: '',
+        ws: null,
+        connected: false,
+        typingUser: null,
+        typingTimeout: null,
+        teamMembers: [],
+        showMentions: false,
+        mentionSuggestions: [],
+        selectedMentionIndex: 0,
+        mentionStartPos: -1,
+
+        async init() {
+            await this.loadTeams();
+            this.connectWebSocket();
+        },
+
+        async loadTeams() {
+            try {
+                this.teams = await apiRequest('/teams/index.php');
+                if (this.teams.length > 0) {
+                    this.selectTeam(this.teams[0]);
+                }
+            } catch (err) {
+                console.error('Error loading teams:', err);
+            }
+        },
+
+        async selectTeam(team) {
+            this.selectedTeam = team;
+            await this.loadMessages();
+            await this.loadTeamMembers();
+            
+            if (this.connected && this.ws) {
+                this.ws.send(JSON.stringify({
+                    event: 'joinTeam',
+                    team_id: team.id
+                }));
+            }
+        },
+
+        async loadTeamMembers() {
+            if (!this.selectedTeam) return;
+            
+            try {
+                this.teamMembers = await apiRequest(`/teams/members.php?team_id=${this.selectedTeam.id}`);
+            } catch (err) {
+                console.error('Error loading team members:', err);
+            }
+        },
+
+        async loadMessages() {
+            if (!this.selectedTeam) return;
+            
+            try {
+                this.messages = await apiRequest(`/teams/messages.php?team_id=${this.selectedTeam.id}`);
+                this.$nextTick(() => this.scrollToBottom());
+            } catch (err) {
+                console.error('Error loading messages:', err);
+            }
+        },
+
+        connectWebSocket() {
+            const token = localStorage.getItem('token');
+            this.ws = new WebSocket(`ws://localhost:8080?token=${token}`);
+
+            this.ws.onopen = () => {
+                console.log('WebSocket connected');
+                this.connected = true;
+                if (this.selectedTeam) {
+                    this.ws.send(JSON.stringify({
+                        event: 'joinTeam',
+                        team_id: this.selectedTeam.id
+                    }));
+                }
+            };
+
+            this.ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                
+                if (data.event === 'newMessage') {
+                    if (data.team_id === this.selectedTeam?.id) {
+                        this.messages.push(data.message);
+                        this.$nextTick(() => this.scrollToBottom());
+                    }
+                } else if (data.event === 'userTyping') {
+                    if (data.user_id !== this.user.id && data.team_id === this.selectedTeam?.id) {
+                        this.typingUser = data.user_name;
+                        clearTimeout(this.typingTimeout);
+                        this.typingTimeout = setTimeout(() => {
+                            this.typingUser = null;
+                        }, 3000);
+                    }
+                }
+            };
+
+            this.ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                this.connected = false;
+                // Reconnect after 3 seconds
+                setTimeout(() => this.connectWebSocket(), 3000);
+            };
+
+            this.ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+        },
+
+        async sendMessage() {
+            if (!this.messageText.trim() || !this.selectedTeam) return;
+
+            const content = this.messageText;
+            this.messageText = '';
+
+            try {
+                // Send via REST API
+                const message = await apiRequest('/teams/messages.php', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        team_id: this.selectedTeam.id,
+                        content: content
+                    })
+                });
+
+                // Add to messages if not already added by WebSocket
+                if (!this.messages.find(m => m.id === message.id)) {
+                    this.messages.push(message);
+                    this.$nextTick(() => this.scrollToBottom());
+                }
+
+                // Also send via WebSocket if connected
+                if (this.connected && this.ws) {
+                    this.ws.send(JSON.stringify({
+                        event: 'sendMessage',
+                        team_id: this.selectedTeam.id,
+                        content: content
+                    }));
+                }
+            } catch (err) {
+                console.error('Error sending message:', err);
+                this.messageText = content; // Restore message on error
+            }
+        },
+
+        async deleteMessage(messageId) {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το μήνυμα;')) return;
+            
+            try {
+                await apiRequest(`/teams/messages.php?id=${messageId}`, {
+                    method: 'DELETE'
+                });
+                this.messages = this.messages.filter(m => m.id !== messageId);
+            } catch (err) {
+                alert('Σφάλμα: ' + err.message);
+            }
+        },
+
+        onTyping() {
+            if (!this.connected || !this.selectedTeam) return;
+
+            this.ws.send(JSON.stringify({
+                event: 'typing',
+                team_id: this.selectedTeam.id,
+                user_name: this.user.first_name + ' ' + this.user.last_name
+            }));
+        },
+
+        scrollToBottom() {
+            const container = this.$refs.messagesContainer;
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        },
+
+        formatMessageTime(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            
+            const timeStr = date.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+            
+            if (messageDate.getTime() === today.getTime()) {
+                return timeStr;
+            } else if (messageDate.getTime() === today.getTime() - 86400000) {
+                return 'Χθες ' + timeStr;
+            } else {
+                return date.toLocaleDateString('el-GR', { day: 'numeric', month: 'short' }) + ' ' + timeStr;
+            }
+        },
+
+        formatMentions(content) {
+            // Highlight @mentions
+            return content.replace(/@(\w+)/g, '<span class="font-semibold underline">@$1</span>');
+        },
+
+        onMessageInput() {
+            // Check for @ mentions
+            const cursorPos = event.target.selectionStart;
+            const textBeforeCursor = this.messageText.substring(0, cursorPos);
+            const lastAtPos = textBeforeCursor.lastIndexOf('@');
+            
+            if (lastAtPos !== -1) {
+                const textAfterAt = textBeforeCursor.substring(lastAtPos + 1);
+                const hasSpace = textAfterAt.includes(' ');
+                
+                if (!hasSpace) {
+                    this.mentionStartPos = lastAtPos;
+                    const searchTerm = textAfterAt.toLowerCase();
+                    this.mentionSuggestions = this.teamMembers.filter(member => 
+                        (member.first_name + member.last_name).toLowerCase().includes(searchTerm)
+                    ).slice(0, 5);
+                    this.showMentions = this.mentionSuggestions.length > 0;
+                    this.selectedMentionIndex = 0;
+                } else {
+                    this.showMentions = false;
+                }
+            } else {
+                this.showMentions = false;
+            }
+            
+            // Also trigger typing indicator
+            this.onTyping();
+        },
+
+        selectMention(member) {
+            const username = '@' + member.first_name.toLowerCase() + member.last_name.toLowerCase();
+            const before = this.messageText.substring(0, this.mentionStartPos);
+            const after = this.messageText.substring(this.messageText.indexOf(' ', this.mentionStartPos) !== -1 ? this.messageText.indexOf(' ', this.mentionStartPos) : this.messageText.length);
+            this.messageText = before + username + ' ' + after;
+            this.showMentions = false;
+        },
+
+        navigateMentions(direction) {
+            if (!this.showMentions) return;
+            
+            this.selectedMentionIndex += direction;
+            if (this.selectedMentionIndex < 0) this.selectedMentionIndex = this.mentionSuggestions.length - 1;
+            if (this.selectedMentionIndex >= this.mentionSuggestions.length) this.selectedMentionIndex = 0;
+        },
+
+        handleEnter() {
+            if (this.showMentions && this.mentionSuggestions.length > 0) {
+                this.selectMention(this.mentionSuggestions[this.selectedMentionIndex]);
+            } else {
+                this.sendMessage();
+            }
+        }
+    }
+}
+</script>

@@ -1,0 +1,1225 @@
+<div x-data="tasksPage()" x-init="loadTasks()" class="space-y-6 w-full">
+    
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-white drop-shadow-lg">Kanban Board</h1>
+            <p class="text-purple-100">Διαχείριση εργασιών με drag & drop</p>
+        </div>
+        <button @click="showCreateModal = true"
+                class="px-6 py-3 bg-white/90 backdrop-blur text-purple-700 font-semibold rounded-xl hover:bg-white hover:shadow-lg transition hover:-translate-y-1">
+            <i class="fas fa-plus mr-2"></i>
+            Νέα Εργασία
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="glass rounded-3xl p-4 flex flex-wrap gap-3 items-center">
+        <select x-model="filters.priority" @change="applyFilters"
+                class="px-4 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white/80">
+            <option value="">Όλες οι προτεραιότητες</option>
+            <option value="LOW">LOW</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HIGH">HIGH</option>
+            <option value="URGENT">URGENT</option>
+        </select>
+        
+        <select x-model="filters.status" @change="applyFilters"
+                class="px-4 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white/80">
+            <option value="">Όλες οι καταστάσεις</option>
+            <option value="active">Ενεργά (TODO, IN_PROGRESS, IN_REVIEW)</option>
+            <option value="TODO">TODO</option>
+            <option value="IN_PROGRESS">IN PROGRESS</option>
+            <option value="IN_REVIEW">IN REVIEW</option>
+            <option value="COMPLETED">COMPLETED</option>
+            <option value="CANCELLED">CANCELLED</option>
+        </select>
+        
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">Από:</label>
+            <input type="date" x-model="filters.dateFrom" @change="applyFilters"
+                   class="px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white/80 text-sm">
+        </div>
+        
+        <div class="flex items-center gap-2">
+            <label class="text-sm text-gray-600">Έως:</label>
+            <input type="date" x-model="filters.dateTo" @change="applyFilters"
+                   class="px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 bg-white/80 text-sm">
+        </div>
+        
+        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+            <input type="checkbox" x-model="filters.hideCompleted" @change="applyFilters"
+                   class="w-4 h-4 text-purple-600 rounded">
+            Απόκρυψη ολοκληρωμένων
+        </label>
+        
+        <button @click="clearFilters" class="px-4 py-2 text-gray-600 hover:bg-white/50 rounded-xl transition">
+            <i class="fas fa-times mr-2"></i>Καθαρισμός
+        </button>
+        
+        <span class="ml-auto text-sm text-gray-500" x-text="'Σύνολο: ' + tasks.length + ' εργασίες'"></span>
+    </div>
+
+    <!-- Kanban Columns -->
+    <div x-show="loading" class="text-center py-12">
+        <div class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div x-show="!loading" class="flex gap-4 overflow-x-auto pb-4" style="min-height: 500px;">
+        
+        <!-- TODO Column -->
+        <div class="bg-gradient-to-b from-amber-50/90 to-white/80 backdrop-blur-lg rounded-3xl p-4 flex-shrink-0 shadow-lg border border-amber-200/50" style="min-width: 280px; width: 280px;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-amber-800 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-amber-500 rounded-full shadow-lg shadow-amber-500/50"></span>
+                    TODO
+                </h3>
+                <span class="text-sm text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full" x-text="columns.TODO.length"></span>
+            </div>
+            <div class="space-y-3 min-h-[100px]" 
+                 @drop="handleDrop($event, 'TODO')" 
+                 @dragover.prevent 
+                 @dragenter.prevent="$el.classList.add('bg-amber-100/50')" 
+                 @dragleave="$el.classList.remove('bg-amber-100/50')">
+                <template x-for="task in columns.TODO" :key="task.id">
+                    <div draggable="true" 
+                         @dragstart="handleDragStart($event, task)" 
+                         @dragend="handleDragEnd($event)" 
+                         @click="viewTask(task)" 
+                         class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition cursor-move">
+                        <h4 class="font-semibold text-gray-800 mb-2" x-text="task.title"></h4>
+                        <p class="text-sm text-gray-600 mb-3" x-text="task.description ? (task.description.substring(0, 60) + (task.description.length > 60 ? '...' : '')) : 'Χωρίς περιγραφή'"></p>
+                        
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold"
+                                  :class="{
+                                      'bg-red-100 text-red-700': task.priority === 'URGENT',
+                                      'bg-orange-100 text-orange-700': task.priority === 'HIGH',
+                                      'bg-blue-100 text-blue-700': task.priority === 'MEDIUM',
+                                      'bg-gray-100 text-gray-700': task.priority === 'LOW'
+                                  }"
+                                  x-text="task.priority"></span>
+                            
+                            <template x-if="task.deadline">
+                                <span class="text-xs flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full" :class="getDeadlineColor(task.deadline)"></span>
+                                    <span x-text="formatDate(task.deadline)"></span>
+                                </span>
+                            </template>
+                        </div>
+                        
+                        <!-- Multi-Assignee Display -->
+                        <template x-if="task.assignees && task.assignees.length > 0">
+                            <div class="flex items-center gap-2 text-xs text-gray-600 border-t pt-2">
+                                <div class="flex -space-x-2">
+                                    <template x-for="(assignee, idx) in task.assignees.slice(0, 3)" :key="assignee.id">
+                                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                                             :title="assignee.first_name + ' ' + assignee.last_name">
+                                            <span x-text="assignee.first_name[0] + assignee.last_name[0]"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="task.assignees.length > 3">
+                                        <div class="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                                             :title="'+ ' + (task.assignees.length - 3) + ' ακόμα'">
+                                            <span x-text="'+' + (task.assignees.length - 3)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <span x-text="task.assignees.length === 1 ? task.assignees[0].first_name + ' ' + task.assignees[0].last_name : task.assignees.length + ' άτομα'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- IN_PROGRESS Column -->
+        <div class="bg-gradient-to-b from-blue-50/90 to-white/80 backdrop-blur-lg rounded-3xl p-4 flex-shrink-0 shadow-lg border border-blue-200/50" style="min-width: 280px; width: 280px;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-blue-800 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50"></span>
+                    IN PROGRESS
+                </h3>
+                <span class="text-sm text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full" x-text="columns.IN_PROGRESS.length"></span>
+            </div>
+            <div class="space-y-3 min-h-[100px]" 
+                 @drop="handleDrop($event, 'IN_PROGRESS')" 
+                 @dragover.prevent 
+                 @dragenter.prevent="$el.classList.add('bg-blue-100/50')" 
+                 @dragleave="$el.classList.remove('bg-blue-100/50')">
+                <template x-for="task in columns.IN_PROGRESS" :key="task.id">
+                    <div draggable="true" 
+                         @dragstart="handleDragStart($event, task)" 
+                         @dragend="handleDragEnd($event)" 
+                         @click="viewTask(task)" 
+                         class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition cursor-move border-l-4 border-blue-500">
+                        <h4 class="font-semibold text-gray-800 mb-2" x-text="task.title"></h4>
+                        <p class="text-sm text-gray-600 mb-3" x-text="task.description ? (task.description.substring(0, 60) + (task.description.length > 60 ? '...' : '')) : 'Χωρίς περιγραφή'"></p>
+                        
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold"
+                                  :class="{
+                                      'bg-red-100 text-red-700': task.priority === 'URGENT',
+                                      'bg-orange-100 text-orange-700': task.priority === 'HIGH',
+                                      'bg-blue-100 text-blue-700': task.priority === 'MEDIUM',
+                                      'bg-gray-100 text-gray-700': task.priority === 'LOW'
+                                  }"
+                                  x-text="task.priority"></span>
+                            
+                            <template x-if="task.deadline">
+                                <span class="text-xs flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full" :class="getDeadlineColor(task.deadline)"></span>
+                                    <span x-text="formatDate(task.deadline)"></span>
+                                </span>
+                            </template>
+                        </div>
+                        
+                        <!-- Multi-Assignee Display -->
+                        <template x-if="task.assignees && task.assignees.length > 0">
+                            <div class="flex items-center gap-2 text-xs text-gray-600 border-t pt-2">
+                                <div class="flex -space-x-2">
+                                    <template x-for="(assignee, idx) in task.assignees.slice(0, 3)" :key="assignee.id">
+                                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                                             :title="assignee.first_name + ' ' + assignee.last_name">
+                                            <span x-text="assignee.first_name[0] + assignee.last_name[0]"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="task.assignees.length > 3">
+                                        <div class="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                                             :title="'+ ' + (task.assignees.length - 3) + ' ακόμα'">
+                                            <span x-text="'+' + (task.assignees.length - 3)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <span x-text="task.assignees.length === 1 ? task.assignees[0].first_name + ' ' + task.assignees[0].last_name : task.assignees.length + ' άτομα'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- IN_REVIEW Column -->
+        <div class="bg-gradient-to-b from-purple-50/90 to-white/80 backdrop-blur-lg rounded-3xl p-4 flex-shrink-0 shadow-lg border border-purple-200/50" style="min-width: 280px; width: 280px;">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-purple-800 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-purple-500 rounded-full shadow-lg shadow-purple-500/50"></span>
+                    IN REVIEW
+                </h3>
+                <span class="text-sm text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full" x-text="columns.IN_REVIEW.length"></span>
+            </div>
+            <div class="space-y-3 min-h-[100px]" 
+                 @drop="handleDrop($event, 'IN_REVIEW')" 
+                 @dragover.prevent 
+                 @dragenter.prevent="$el.classList.add('bg-purple-100/50')" 
+                 @dragleave="$el.classList.remove('bg-purple-100/50')">
+                <template x-for="task in columns.IN_REVIEW" :key="task.id">
+                    <div draggable="true" 
+                         @dragstart="handleDragStart($event, task)" 
+                         @dragend="handleDragEnd($event)" 
+                         @click="viewTask(task)" 
+                         class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition cursor-move border-l-4 border-purple-500">
+                        <h4 class="font-semibold text-gray-800 mb-2" x-text="task.title"></h4>
+                        <p class="text-sm text-gray-600 mb-3" x-text="task.description ? (task.description.substring(0, 60) + (task.description.length > 60 ? '...' : '')) : 'Χωρίς περιγραφή'"></p>
+                        
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold"
+                                  :class="{
+                                      'bg-red-100 text-red-700': task.priority === 'URGENT',
+                                      'bg-orange-100 text-orange-700': task.priority === 'HIGH',
+                                      'bg-blue-100 text-blue-700': task.priority === 'MEDIUM',
+                                      'bg-gray-100 text-gray-700': task.priority === 'LOW'
+                                  }"
+                                  x-text="task.priority"></span>
+                            
+                            <template x-if="task.deadline">
+                                <span class="text-xs flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full" :class="getDeadlineColor(task.deadline)"></span>
+                                    <span x-text="formatDate(task.deadline)"></span>
+                                </span>
+                            </template>
+                        </div>
+                        
+                        <!-- Multi-Assignee Display -->
+                        <template x-if="task.assignees && task.assignees.length > 0">
+                            <div class="flex items-center gap-2 text-xs text-gray-600 border-t pt-2">
+                                <div class="flex -space-x-2">
+                                    <template x-for="(assignee, idx) in task.assignees.slice(0, 3)" :key="assignee.id">
+                                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                                             :title="assignee.first_name + ' ' + assignee.last_name">
+                                            <span x-text="assignee.first_name[0] + assignee.last_name[0]"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="task.assignees.length > 3">
+                                        <div class="w-6 h-6 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-bold border-2 border-white"
+                                             :title="'+ ' + (task.assignees.length - 3) + ' ακόμα'">
+                                            <span x-text="'+' + (task.assignees.length - 3)"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <span x-text="task.assignees.length === 1 ? task.assignees[0].first_name + ' ' + task.assignees[0].last_name : task.assignees.length + ' άτομα'"></span>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- COMPLETED Column -->
+        <div class="bg-gradient-to-b from-emerald-50/90 to-white/80 backdrop-blur-lg rounded-3xl p-4 flex-shrink-0 shadow-lg border border-emerald-200/50" style="min-width: 280px; width: 280px;" x-show="!filters.hideCompleted">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-emerald-800 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/50"></span>
+                    COMPLETED
+                </h3>
+                <span class="text-sm text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full" x-text="columns.COMPLETED.length"></span>
+            </div>
+            <div class="space-y-3 min-h-[100px] max-h-[400px] overflow-y-auto" 
+                 @drop="handleDrop($event, 'COMPLETED')" 
+                 @dragover.prevent 
+                 @dragenter.prevent="$el.classList.add('bg-emerald-100/50')" 
+                 @dragleave="$el.classList.remove('bg-emerald-100/50')">
+                <template x-for="task in columns.COMPLETED" :key="task.id">
+                    <div draggable="true" 
+                         @dragstart="handleDragStart($event, task)" 
+                         @dragend="handleDragEnd($event)" 
+                         @click="viewTask(task)" 
+                         class="bg-white rounded-xl p-4 shadow hover:shadow-lg transition cursor-move border-l-4 border-green-500">
+                        <h4 class="font-semibold text-gray-800 mb-2 line-through" x-text="task.title"></h4>
+                        <p class="text-sm text-gray-600 mb-3" x-text="task.description ? (task.description.substring(0, 60) + (task.description.length > 60 ? '...' : '')) : 'Χωρίς περιγραφή'"></p>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-green-100 text-green-700">
+                                <i class="fas fa-check mr-1"></i>COMPLETED
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- CANCELLED Column -->
+        <div class="bg-gradient-to-b from-rose-50/90 to-white/80 backdrop-blur-lg rounded-3xl p-4 flex-shrink-0 shadow-lg border border-rose-200/50" style="min-width: 280px; width: 280px;" x-show="!filters.hideCompleted">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-rose-800 flex items-center gap-2">
+                    <span class="w-3 h-3 bg-rose-500 rounded-full shadow-lg shadow-rose-500/50"></span>
+                    CANCELLED
+                </h3>
+                <span class="text-sm text-rose-600 bg-rose-100 px-2 py-0.5 rounded-full" x-text="columns.CANCELLED.length"></span>
+            </div>
+            <div class="space-y-3 min-h-[100px] max-h-[400px] overflow-y-auto" 
+                 @drop="handleDrop($event, 'CANCELLED')" 
+                 @dragover.prevent 
+                 @dragenter.prevent="$el.classList.add('bg-rose-100/50')" 
+                 @dragleave="$el.classList.remove('bg-rose-100/50')">
+                <template x-for="task in columns.CANCELLED" :key="task.id">
+                    <div draggable="true" 
+                         @dragstart="handleDragStart($event, task)" 
+                         @dragend="handleDragEnd($event)" 
+                         @click="viewTask(task)" 
+                         class="bg-white/80 rounded-xl p-4 shadow hover:shadow-lg transition cursor-move border-l-4 border-rose-400 opacity-70">
+                        <h4 class="font-semibold text-gray-700 mb-2 line-through" x-text="task.title"></h4>
+                        <p class="text-sm text-gray-500 mb-3" x-text="task.description ? (task.description.substring(0, 60) + (task.description.length > 60 ? '...' : '')) : 'Χωρίς περιγραφή'"></p>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-1 rounded-lg text-xs font-semibold bg-rose-100 text-rose-700">
+                                <i class="fas fa-times mr-1"></i>CANCELLED
+                            </span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div x-show="showCreateModal" 
+         x-transition
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="showCreateModal = false">
+        
+        <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Νέα Εργασία</h2>
+            
+            <form @submit.prevent="createTask" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Τίτλος</label>
+                    <input type="text" x-model="newTask.title" required
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Περιγραφή</label>
+                    <textarea x-model="newTask.description" rows="3"
+                              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Προτεραιότητα</label>
+                        <select x-model="newTask.priority"
+                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="URGENT">URGENT</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Deadline</label>
+                        <input type="date" x-model="newTask.deadline"
+                               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Ανάθεση σε (πολλαπλή επιλογή)</label>
+                    <div class="border border-gray-300 rounded-xl max-h-48 overflow-y-auto p-2">
+                        <template x-if="users.length === 0">
+                            <p class="text-gray-500 text-sm p-2">Φόρτωση χρηστών...</p>
+                        </template>
+                        <template x-for="u in users" :key="u.id">
+                            <label class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                                <input type="checkbox" 
+                                       :value="u.id" 
+                                       :checked="newTask.assignee_ids.includes(u.id)"
+                                       @change="toggleAssignee(u.id, 'new')"
+                                       class="w-5 h-5 text-blue-600 rounded">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold">
+                                    <span x-text="u.first_name[0] + u.last_name[0]"></span>
+                                </div>
+                                <span class="text-gray-700" x-text="u.first_name + ' ' + u.last_name"></span>
+                            </label>
+                        </template>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1" x-show="newTask.assignee_ids.length > 0" 
+                       x-text="newTask.assignee_ids.length + ' επιλεγμένοι'"></p>
+                </div>
+
+                <div x-show="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="error"></div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showCreateModal = false; resetForm()"
+                            class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                        Ακύρωση
+                    </button>
+                    <button type="submit" :disabled="creating"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!creating">Δημιουργία</span>
+                        <span x-show="creating">Φόρτωση...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Task Modal -->
+    <div x-show="selectedTask" 
+         x-transition
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="selectedTask = null">
+        
+        <div class="glass rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] overflow-auto" @click.stop>
+            <template x-if="selectedTask">
+                <div>
+                    <div class="flex items-start justify-between mb-6">
+                        <div class="flex-1">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2" x-text="selectedTask.title"></h2>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="px-3 py-1 rounded-lg text-sm font-semibold"
+                                      :class="{
+                                          'bg-yellow-100 text-yellow-700': selectedTask.status === 'TODO',
+                                          'bg-blue-100 text-blue-700': selectedTask.status === 'IN_PROGRESS',
+                                          'bg-purple-100 text-purple-700': selectedTask.status === 'IN_REVIEW',
+                                          'bg-green-100 text-green-700': selectedTask.status === 'COMPLETED',
+                                          'bg-red-100 text-red-700': selectedTask.status === 'CANCELLED'
+                                      }"
+                                      x-text="selectedTask.status"></span>
+                                <span class="px-3 py-1 rounded-lg text-sm font-semibold"
+                                      :class="{
+                                          'bg-red-100 text-red-700': selectedTask.priority === 'URGENT',
+                                          'bg-orange-100 text-orange-700': selectedTask.priority === 'HIGH',
+                                          'bg-blue-100 text-blue-700': selectedTask.priority === 'MEDIUM',
+                                          'bg-gray-100 text-gray-700': selectedTask.priority === 'LOW'
+                                      }"
+                                      x-text="selectedTask.priority"></span>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <template x-if="user.role === 'ADMIN' || selectedTask.creator_id === user.id">
+                                <div class="flex gap-2 mt-3">
+                                    <button @click="showEditModal = true" 
+                                            class="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm hover:bg-blue-200 transition">
+                                        <i class="fas fa-edit mr-1"></i>Επεξεργασία
+                                    </button>
+                                    <button @click="showAssignModal = true" 
+                                            class="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200 transition">
+                                        <i class="fas fa-user-plus mr-1"></i>Ανάθεση
+                                    </button>
+                                    <button @click="deleteTask(selectedTask.id)" 
+                                            class="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200 transition">
+                                        <i class="fas fa-trash mr-1"></i>Διαγραφή
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                        <button @click="selectedTask = null" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-2">Περιγραφή</h3>
+                            <p class="text-gray-600" x-text="selectedTask.description || 'Χωρίς περιγραφή'"></p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <template x-if="selectedTask.assignees && selectedTask.assignees.length > 0">
+                                <div class="col-span-2">
+                                    <h3 class="font-bold text-gray-800 mb-2">Ανατέθηκε σε</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="assignee in selectedTask.assignees" :key="assignee.id">
+                                            <div class="flex items-center gap-2 bg-purple-50 rounded-full px-3 py-1">
+                                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold">
+                                                    <span x-text="assignee.first_name[0] + assignee.last_name[0]"></span>
+                                                </div>
+                                                <span class="text-gray-700 text-sm" x-text="assignee.first_name + ' ' + assignee.last_name"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="selectedTask.deadline">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 mb-2">Deadline</h3>
+                                    <p class="text-gray-600 flex items-center gap-2">
+                                        <i class="fas fa-calendar"></i>
+                                        <span x-text="new Date(selectedTask.deadline).toLocaleDateString('el-GR')"></span>
+                                    </p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Completion Info -->
+                        <template x-if="selectedTask.status === 'COMPLETED' && selectedTask.completed_at">
+                            <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+                                <h3 class="font-bold text-green-800 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-check-circle"></i>
+                                    Ολοκληρώθηκε
+                                </h3>
+                                <p class="text-green-700 text-sm">
+                                    <span x-text="new Date(selectedTask.completed_at).toLocaleString('el-GR')"></span>
+                                </p>
+                                <template x-if="selectedTask.completed_by_first_name">
+                                    <p class="text-green-700 text-sm mt-1">
+                                        Από: <span class="font-semibold" x-text="selectedTask.completed_by_first_name + ' ' + selectedTask.completed_by_last_name"></span>
+                                    </p>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Subtasks Section -->
+                        <div class="border-t pt-4">
+                            <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <i class="fas fa-list-check"></i>
+                                Υποεργασίες
+                                <span class="text-sm text-gray-500" x-text="'(' + subtasks.length + ')'"></span>
+                            </h3>
+                            
+                            <div class="space-y-2 mb-3">
+                                <template x-if="loadingSubtasks">
+                                    <div class="text-center py-4">
+                                        <div class="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                </template>
+                                
+                                <template x-if="!loadingSubtasks && subtasks.length === 0">
+                                    <p class="text-gray-500 text-sm py-2">Δεν υπάρχουν υποεργασίες</p>
+                                </template>
+                                
+                                <template x-for="subtask in subtasks" :key="subtask.id">
+                                    <div class="p-3 bg-white rounded-lg">
+                                        <div class="flex items-center gap-3">
+                                            <input type="checkbox" 
+                                                   :checked="subtask.status === 'COMPLETED'"
+                                                   @change="toggleSubtask(subtask)"
+                                                   class="w-5 h-5 text-blue-600 rounded">
+                                            <span class="flex-1" 
+                                                  :class="subtask.status === 'COMPLETED' ? 'line-through text-gray-500' : 'text-gray-800'"
+                                                  x-text="subtask.title"></span>
+                                            <button @click="deleteSubtask(subtask.id)"
+                                                    class="text-red-500 hover:text-red-700">
+                                                <i class="fas fa-trash text-sm"></i>
+                                            </button>
+                                        </div>
+                                        <template x-if="subtask.status === 'COMPLETED' && subtask.completed_at">
+                                            <div class="ml-8 mt-1 text-xs text-gray-500">
+                                                <i class="fas fa-check-circle text-green-500"></i>
+                                                Ολοκληρώθηκε 
+                                                <span x-text="new Date(subtask.completed_at).toLocaleString('el-GR')"></span>
+                                                <template x-if="subtask.completed_by_first_name">
+                                                    <span>από <span x-text="subtask.completed_by_first_name + ' ' + subtask.completed_by_last_name"></span></span>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <input type="text" 
+                                       x-model="newSubtask"
+                                       @keyup.enter="addSubtask"
+                                       placeholder="Νέα υποεργασία..."
+                                       class="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                                <button @click="addSubtask"
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Comments Section -->
+                        <div class="border-t pt-4">
+                            <h3 class="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <i class="fas fa-comments"></i>
+                                Σχόλια
+                                <span class="text-sm text-gray-500" x-text="'(' + comments.length + ')'"></span>
+                            </h3>
+                            
+                            <div class="space-y-3 mb-3 max-h-60 overflow-y-auto">
+                                <template x-if="loadingComments">
+                                    <div class="text-center py-4">
+                                        <div class="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                </template>
+                                
+                                <template x-if="!loadingComments && comments.length === 0">
+                                    <p class="text-gray-500 text-sm py-2">Δεν υπάρχουν σχόλια</p>
+                                </template>
+                                
+                                <template x-for="comment in comments" :key="comment.id">
+                                    <div class="flex gap-3 p-3 bg-white rounded-lg">
+                                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                            <span x-text="comment.first_name[0] + comment.last_name[0]"></span>
+                                        </div>
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <span class="font-semibold text-sm" x-text="comment.first_name + ' ' + comment.last_name"></span>
+                                                <span class="text-xs text-gray-500" x-text="new Date(comment.created_at).toLocaleString('el-GR')"></span>
+                                            </div>
+                                            <p class="text-gray-700 text-sm" x-text="comment.content"></p>
+                                        </div>
+                                        <button @click="deleteComment(comment.id)" 
+                                                x-show="user.role === 'ADMIN' || comment.user_id === user.id"
+                                                class="text-red-500 hover:text-red-700 self-start" 
+                                                title="Διαγραφή">
+                                            <i class="fas fa-trash text-sm"></i>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <textarea x-model="newComment"
+                                          @keyup.ctrl.enter="addComment"
+                                          placeholder="Γράψτε ένα σχόλιο..."
+                                          rows="2"
+                                          class="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
+                                <button @click="addComment"
+                                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 self-end">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button @click="selectedTask = null" 
+                                class="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition">
+                            Κλείσιμο
+                        </button>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div x-show="showEditModal" 
+         x-transition
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="showEditModal = false">
+        
+        <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Επεξεργασία Εργασίας</h2>
+            
+            <form @submit.prevent="updateTask" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Τίτλος</label>
+                    <input type="text" x-model="editForm.title" required
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Περιγραφή</label>
+                    <textarea x-model="editForm.description" rows="3"
+                              class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Κατάσταση</label>
+                        <select x-model="editForm.status"
+                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            <option value="TODO">TODO</option>
+                            <option value="IN_PROGRESS">IN PROGRESS</option>
+                            <option value="IN_REVIEW">IN REVIEW</option>
+                            <option value="COMPLETED">COMPLETED</option>
+                            <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Προτεραιότητα</label>
+                        <select x-model="editForm.priority"
+                                class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                            <option value="URGENT">URGENT</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Deadline</label>
+                    <input type="date" x-model="editForm.deadline"
+                           class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200">
+                </div>
+
+                <div x-show="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="error"></div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showEditModal = false"
+                            class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                        Ακύρωση
+                    </button>
+                    <button type="submit" :disabled="updating"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!updating">Ενημέρωση</span>
+                        <span x-show="updating">Αποθήκευση...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Assign Task Modal -->
+    <div x-show="showAssignModal" 
+         x-transition
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+         @click.self="showAssignModal = false">
+        
+        <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Ανάθεση Εργασίας</h2>
+            
+            <form @submit.prevent="assignTask" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2">Επιλογή Χρηστών (πολλαπλή επιλογή)</label>
+                    <div class="border border-gray-300 rounded-xl max-h-64 overflow-y-auto p-2">
+                        <template x-for="u in users" :key="u.id">
+                            <label class="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg cursor-pointer">
+                                <input type="checkbox" 
+                                       :value="u.id" 
+                                       :checked="assignForm.assignee_ids.includes(u.id)"
+                                       @change="toggleAssignee(u.id, 'assign')"
+                                       class="w-5 h-5 text-purple-600 rounded">
+                                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 flex items-center justify-center text-white text-xs font-bold">
+                                    <span x-text="u.first_name[0] + u.last_name[0]"></span>
+                                </div>
+                                <span class="text-gray-700" x-text="u.first_name + ' ' + u.last_name"></span>
+                            </label>
+                        </template>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1" x-show="assignForm.assignee_ids.length > 0" 
+                       x-text="assignForm.assignee_ids.length + ' επιλεγμένοι'"></p>
+                </div>
+
+                <div x-show="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="error"></div>
+
+                <div class="flex gap-3 pt-4">
+                    <button type="button" @click="showAssignModal = false"
+                            class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                        Ακύρωση
+                    </button>
+                    <button type="submit" :disabled="assigning"
+                            class="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
+                        <span x-show="!assigning">Ανάθεση</span>
+                        <span x-show="assigning">Αποθήκευση...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function tasksPage() {
+    return {
+        user: JSON.parse(localStorage.getItem('user') || '{}'),
+        tasks: [],
+        columns: {
+            TODO: [],
+            IN_PROGRESS: [],
+            IN_REVIEW: [],
+            COMPLETED: [],
+            CANCELLED: []
+        },
+        selectedTask: null,
+        draggedTask: null,
+        showCreateModal: false,
+        showEditModal: false,
+        showAssignModal: false,
+        loading: false,
+        creating: false,
+        updating: false,
+        assigning: false,
+        error: '',
+        filters: {
+            priority: '',
+            status: '',
+            dateFrom: '',
+            dateTo: '',
+            hideCompleted: false
+        },
+        newTask: {
+            title: '',
+            description: '',
+            priority: 'MEDIUM',
+            deadline: '',
+            assignee_ids: []
+        },
+        editForm: {
+            title: '',
+            description: '',
+            status: '',
+            priority: '',
+            deadline: ''
+        },
+        assignForm: {
+            assignee_ids: []
+        },
+        users: [],
+        subtasks: [],
+        comments: [],
+        newSubtask: '',
+        newComment: '',
+        loadingSubtasks: false,
+        loadingComments: false,
+
+        async loadTasks() {
+            this.loading = true;
+            try {
+                let url = '/tasks/index.php';
+                const params = new URLSearchParams();
+                if (this.filters.priority) params.append('priority', this.filters.priority);
+                if (params.toString()) url += '?' + params.toString();
+
+                let allTasks = await apiRequest(url);
+                
+                // Apply client-side filters
+                this.tasks = allTasks.filter(task => {
+                    // Status filter
+                    if (this.filters.status === 'active') {
+                        if (!['TODO', 'IN_PROGRESS', 'IN_REVIEW'].includes(task.status)) return false;
+                    } else if (this.filters.status && task.status !== this.filters.status) {
+                        return false;
+                    }
+                    
+                    // Date from filter
+                    if (this.filters.dateFrom) {
+                        const taskDate = new Date(task.created_at);
+                        const filterDate = new Date(this.filters.dateFrom);
+                        if (taskDate < filterDate) return false;
+                    }
+                    
+                    // Date to filter
+                    if (this.filters.dateTo) {
+                        const taskDate = new Date(task.created_at);
+                        const filterDate = new Date(this.filters.dateTo);
+                        filterDate.setHours(23, 59, 59);
+                        if (taskDate > filterDate) return false;
+                    }
+                    
+                    return true;
+                });
+                
+                this.organizeColumns();
+                
+                // Load users for assignee selector
+                if (this.users.length === 0) {
+                    await this.loadUsers();
+                }
+            } catch (err) {
+                console.error('Error loading tasks:', err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadUsers() {
+            try {
+                this.users = await apiRequest('/users/index.php');
+                this.users = this.users.filter(u => u.is_active);
+            } catch (err) {
+                console.error('Error loading users:', err);
+            }
+        },
+
+        async loadSubtasks(taskId) {
+            this.loadingSubtasks = true;
+            try {
+                this.subtasks = await apiRequest(`/subtasks/index.php?task_id=${taskId}`);
+            } catch (err) {
+                console.error('Error loading subtasks:', err);
+            } finally {
+                this.loadingSubtasks = false;
+            }
+        },
+
+        async addSubtask() {
+            if (!this.newSubtask.trim()) return;
+            try {
+                const subtask = await apiRequest('/subtasks/index.php', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        task_id: this.selectedTask.id,
+                        title: this.newSubtask
+                    })
+                });
+                this.subtasks.push(subtask);
+                this.newSubtask = '';
+            } catch (err) {
+                console.error('Error adding subtask:', err);
+            }
+        },
+
+        async toggleSubtask(subtask) {
+            try {
+                const newStatus = subtask.status === 'TODO' ? 'COMPLETED' : 'TODO';
+                const updated = await apiRequest(`/subtasks/index.php?id=${subtask.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                // Update the subtask in the array to trigger reactivity
+                const index = this.subtasks.findIndex(s => s.id === subtask.id);
+                if (index !== -1) {
+                    this.subtasks[index] = updated;
+                }
+            } catch (err) {
+                console.error('Error toggling subtask:', err);
+            }
+        },
+
+        async deleteSubtask(subtaskId) {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το υποέργο;')) return;
+            try {
+                await apiRequest(`/subtasks/index.php?id=${subtaskId}`, {
+                    method: 'DELETE'
+                });
+                this.subtasks = this.subtasks.filter(s => s.id !== subtaskId);
+            } catch (err) {
+                console.error('Error deleting subtask:', err);
+            }
+        },
+
+        async loadComments(taskId) {
+            this.loadingComments = true;
+            try {
+                this.comments = await apiRequest(`/comments/index.php?task_id=${taskId}`);
+            } catch (err) {
+                console.error('Error loading comments:', err);
+            } finally {
+                this.loadingComments = false;
+            }
+        },
+
+        async addComment() {
+            if (!this.newComment.trim()) return;
+            try {
+                const comment = await apiRequest('/comments/index.php', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        task_id: this.selectedTask.id,
+                        content: this.newComment
+                    })
+                });
+                this.comments.push(comment);
+                this.newComment = '';
+            } catch (err) {
+                console.error('Error adding comment:', err);
+            }
+        },
+
+        async deleteComment(commentId) {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το σχόλιο;')) return;
+            
+            try {
+                await apiRequest(`/comments/index.php?id=${commentId}`, {
+                    method: 'DELETE'
+                });
+                this.comments = this.comments.filter(c => c.id !== commentId);
+            } catch (err) {
+                alert('Σφάλμα: ' + err.message);
+            }
+        },
+
+        organizeColumns() {
+            this.columns = {
+                TODO: [],
+                IN_PROGRESS: [],
+                IN_REVIEW: [],
+                COMPLETED: [],
+                CANCELLED: []
+            };
+
+            this.tasks.forEach(task => {
+                if (this.columns[task.status]) {
+                    this.columns[task.status].push(task);
+                }
+            });
+        },
+
+        async createTask() {
+            this.creating = true;
+            this.error = '';
+            try {
+                const taskData = {
+                    title: this.newTask.title,
+                    description: this.newTask.description,
+                    priority: this.newTask.priority,
+                    deadline: this.newTask.deadline,
+                    assignee_ids: this.newTask.assignee_ids
+                };
+                const task = await apiRequest('/tasks/index.php', {
+                    method: 'POST',
+                    body: JSON.stringify(taskData)
+                });
+                this.tasks.push(task);
+                this.organizeColumns();
+                this.showCreateModal = false;
+                this.resetForm();
+            } catch (err) {
+                this.error = err.message;
+            } finally {
+                this.creating = false;
+            }
+        },
+
+        async viewTask(task) {
+            this.selectedTask = task;
+            this.subtasks = [];
+            this.comments = [];
+            this.newSubtask = '';
+            this.newComment = '';
+            
+            // Prepare edit form
+            this.editForm = {
+                title: task.title,
+                description: task.description || '',
+                status: task.status,
+                priority: task.priority,
+                deadline: task.deadline || ''
+            };
+            
+            // Prepare assign form with current assignees
+            this.assignForm = {
+                assignee_ids: task.assignees ? task.assignees.map(a => a.id) : []
+            };
+            
+            await this.loadSubtasks(task.id);
+            await this.loadComments(task.id);
+        },
+
+        async updateTask() {
+            this.updating = true;
+            this.error = '';
+            try {
+                const updated = await apiRequest(`/tasks/single.php?id=${this.selectedTask.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(this.editForm)
+                });
+                
+                // Update in tasks array
+                const index = this.tasks.findIndex(t => t.id === this.selectedTask.id);
+                if (index !== -1) {
+                    this.tasks[index] = updated;
+                }
+                
+                this.selectedTask = updated;
+                this.organizeColumns();
+                this.showEditModal = false;
+            } catch (err) {
+                this.error = err.message;
+            } finally {
+                this.updating = false;
+            }
+        },
+
+        async assignTask() {
+            this.assigning = true;
+            this.error = '';
+            try {
+                const updated = await apiRequest(`/tasks/single.php?id=${this.selectedTask.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ assignee_ids: this.assignForm.assignee_ids })
+                });
+                
+                // Update in tasks array
+                const index = this.tasks.findIndex(t => t.id === this.selectedTask.id);
+                if (index !== -1) {
+                    this.tasks[index] = updated;
+                }
+                
+                this.selectedTask = updated;
+                this.organizeColumns();
+                this.showAssignModal = false;
+            } catch (err) {
+                this.error = err.message;
+            } finally {
+                this.assigning = false;
+            }
+        },
+
+        async deleteTask(taskId) {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτή την εργασία;')) return;
+            
+            try {
+                await apiRequest(`/tasks/single.php?id=${taskId}`, {
+                    method: 'DELETE'
+                });
+                
+                this.tasks = this.tasks.filter(t => t.id !== taskId);
+                this.organizeColumns();
+                this.selectedTask = null;
+            } catch (err) {
+                alert('Σφάλμα κατά τη διαγραφή: ' + err.message);
+            }
+        },
+
+        applyFilters() {
+            this.loadTasks();
+        },
+
+        clearFilters() {
+            this.filters = { 
+                priority: '',
+                status: '',
+                dateFrom: '',
+                dateTo: '',
+                hideCompleted: false
+            };
+            this.loadTasks();
+        },
+
+        resetForm() {
+            this.newTask = {
+                title: '',
+                description: '',
+                priority: 'MEDIUM',
+                deadline: '',
+                assignee_ids: []
+            };
+            this.error = '';
+        },
+
+        // Toggle assignee selection in checkbox list
+        toggleAssignee(userId, formType) {
+            const targetArray = formType === 'new' ? this.newTask.assignee_ids : this.assignForm.assignee_ids;
+            const index = targetArray.indexOf(userId);
+            if (index > -1) {
+                targetArray.splice(index, 1);
+            } else {
+                targetArray.push(userId);
+            }
+        },
+
+        getUserName(userId) {
+            const user = this.users.find(u => u.id == userId);
+            return user ? `${user.first_name} ${user.last_name}` : 'Χωρίς ανάθεση';
+        },
+
+        formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('el-GR', { day: 'numeric', month: 'short' });
+        },
+
+        getDeadlineColor(deadline) {
+            const now = new Date();
+            const deadlineDate = new Date(deadline);
+            const diffDays = Math.ceil((deadlineDate - now) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 1) return 'bg-red-500';
+            if (diffDays <= 3) return 'bg-yellow-500';
+            return 'bg-green-500';
+        },
+
+        handleDragStart(event, task) {
+            this.draggedTask = task;
+            event.dataTransfer.effectAllowed = 'move';
+            event.target.classList.add('opacity-50');
+        },
+
+        handleDragEnd(event) {
+            event.target.classList.remove('opacity-50');
+            // Remove highlight from all drop zones
+            document.querySelectorAll('.bg-blue-50').forEach(el => {
+                el.classList.remove('bg-blue-50');
+            });
+        },
+
+        async handleDrop(event, newStatus) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('bg-blue-50');
+            
+            if (!this.draggedTask || this.draggedTask.status === newStatus) {
+                this.draggedTask = null;
+                return;
+            }
+
+            const taskId = this.draggedTask.id;
+            const oldStatus = this.draggedTask.status;
+
+            try {
+                // Update task status
+                const updated = await apiRequest(`/tasks/single.php?id=${taskId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                // Update in tasks array
+                const index = this.tasks.findIndex(t => t.id === taskId);
+                if (index !== -1) {
+                    this.tasks[index] = updated;
+                }
+
+                // Reorganize columns
+                this.organizeColumns();
+
+                // Update selected task if it's the one being dragged
+                if (this.selectedTask && this.selectedTask.id === taskId) {
+                    this.selectedTask = updated;
+                }
+            } catch (err) {
+                console.error('Error updating task status:', err);
+                alert('Σφάλμα κατά την ενημέρωση της κατάστασης: ' + err.message);
+            } finally {
+                this.draggedTask = null;
+            }
+        }
+    }
+}
+</script>
