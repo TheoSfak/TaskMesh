@@ -220,9 +220,9 @@ if ($method === 'DELETE') {
         exit();
     }
     
-    if ($team['owner_id'] != $user['id'] && $user['role'] !== 'ADMIN') {
+    if ($team['owner_id'] != $user['id'] && $user['role'] !== 'ADMIN' && $user['role'] !== 'MANAGER') {
         http_response_code(403);
-        echo json_encode(array("error" => "Only team owner or admin can delete the team"));
+        echo json_encode(array("error" => "Only team owner, manager, or admin can delete the team"));
         exit();
     }
     

@@ -4,6 +4,19 @@
 require_once __DIR__ . '/../config/jwt.php';
 require_once __DIR__ . '/../config/database.php';
 
+// Polyfill for getallheaders() if not available (CLI, nginx, etc.)
+if (!function_exists('getallheaders')) {
+    function getallheaders() {
+        $headers = [];
+        foreach ($_SERVER as $name => $value) {
+            if (substr($name, 0, 5) == 'HTTP_') {
+                $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+            }
+        }
+        return $headers;
+    }
+}
+
 function authenticate() {
     $headers = getallheaders();
     
@@ -76,5 +89,10 @@ function requireManager() {
     }
 
     return $user;
+}
+
+// Alias for authenticate() - used by newer API files
+function verifyJWT() {
+    return authenticate();
 }
 ?>

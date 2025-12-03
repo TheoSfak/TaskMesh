@@ -7,9 +7,28 @@ class JWT {
     private static $audience = "taskmesh-users";
 
     public static function encode($payload) {
+        // Load session timeout from system settings
+        $sessionTimeout = 1440; // Default 1440 minutes (1 day)
+        
+        try {
+            require_once __DIR__ . '/database.php';
+            $database = new Database();
+            $db = $database->getConnection();
+            
+            $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'session_timeout'";
+            $stmt = $db->query($query);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result) {
+                $sessionTimeout = (int)$result['setting_value'];
+            }
+        } catch (Exception $e) {
+            // Use default if settings not available
+        }
+        
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
         $payload['iat'] = time();
-        $payload['exp'] = time() + (7 * 24 * 60 * 60); // 7 days
+        $payload['exp'] = time() + ($sessionTimeout * 60); // Convert minutes to seconds
         $payload['iss'] = self::$issuer;
         $payload['aud'] = self::$audience;
         

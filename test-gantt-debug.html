@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gantt Debug Test</title>
+    <link rel="stylesheet" href="https://unpkg.com/frappe-gantt@0.6.1/dist/frappe-gantt.css">
+    <script src="https://unpkg.com/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #gantt { 
+            overflow: auto;
+            margin-top: 20px;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+        }
+        .success { border-color: #4caf50; background: #e8f5e9; }
+        .error { border-color: #f44336; background: #ffebee; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Gantt Debug Test</h1>
+        
+        <div class="test-section" id="test1">
+            <h2>Test 1: Check API Data</h2>
+            <button onclick="testAPI()">Fetch Timeline API Data</button>
+            <pre id="api-result">Click button to test...</pre>
+        </div>
+
+        <div class="test-section" id="test2">
+            <h2>Test 2: Simple Gantt Test</h2>
+            <button onclick="testSimpleGantt()">Test with Hardcoded Data</button>
+            <div id="gantt-simple"></div>
+            <pre id="simple-result"></pre>
+        </div>
+
+        <div class="test-section" id="test3">
+            <h2>Test 3: Test with API Data</h2>
+            <button onclick="testAPIGantt()">Test with Real API Data</button>
+            <div id="gantt-api"></div>
+            <pre id="api-gantt-result"></pre>
+        </div>
+
+        <div class="test-section" id="test4">
+            <h2>Test 4: Check Database Dates</h2>
+            <button onclick="checkDatabaseDates()">Check Database Format</button>
+            <pre id="db-result"></pre>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost/TaskMesh/api';
+        const token = localStorage.getItem('token');
+
+        // Test 1: Fetch API data
+        async function testAPI() {
+            const result = document.getElementById('api-result');
+            const section = document.getElementById('test1');
+            try {
+                result.textContent = 'Loading...';
+                
+                const response = await fetch(`${API_URL}/tasks/timeline.php`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                result.textContent = JSON.stringify(data, null, 2);
+                section.className = 'test-section success';
+                
+                console.log('API Data:', data);
+                
+                // Check dates format
+                if (data.tasks && data.tasks.length > 0) {
+                    const firstTask = data.tasks[0];
+                    result.textContent += '\n\n=== FIRST TASK ANALYSIS ===\n';
+                    result.textContent += `Title: ${firstTask.title}\n`;
+                    result.textContent += `Start Date: ${firstTask.start_date} (type: ${typeof firstTask.start_date})\n`;
+                    result.textContent += `End Date: ${firstTask.end_date} (type: ${typeof firstTask.end_date})\n`;
+                    result.textContent += `Start Date Length: ${firstTask.start_date ? firstTask.start_date.length : 'null'}\n`;
+                    result.textContent += `End Date Length: ${firstTask.end_date ? firstTask.end_date.length : 'null'}\n`;
+                    
+                    // Check character at position 9
+                    if (firstTask.start_date && firstTask.start_date.length > 9) {
+                        result.textContent += `Character at index 9 of start_date: '${firstTask.start_date[9]}'\n`;
+                    }
+                }
+                
+            } catch (error) {
+                result.textContent = 'ERROR: ' + error.message;
+                section.className = 'test-section error';
+                console.error(error);
+            }
+        }
+
+        // Test 2: Simple hardcoded Gantt
+        function testSimpleGantt() {
+            const container = document.getElementById('gantt-simple');
+            const result = document.getElementById('simple-result');
+            const section = document.getElementById('test2');
+            
+            try {
+                container.innerHTML = '';
+                result.textContent = 'Testing...';
+                
+                const tasks = [
+                    {
+                        id: '1',
+                        name: 'Test Task 1',
+                        start: '2024-12-01',
+                        end: '2024-12-05',
+                        progress: 50
+                    },
+                    {
+                        id: '2',
+                        name: 'Test Task 2',
+                        start: '2024-12-03',
+                        end: '2024-12-08',
+                        progress: 30
+                    }
+                ];
+                
+                result.textContent = 'Input data:\n' + JSON.stringify(tasks, null, 2);
+                
+                const gantt = new Gantt(container, tasks, {
+                    view_mode: 'Week',
+                    date_format: 'YYYY-MM-DD',
+                    bar_height: 30,
+                    padding: 18
+                });
+                
+                result.textContent += '\n\n✅ SUCCESS! Simple Gantt rendered!';
+                section.className = 'test-section success';
+                
+            } catch (error) {
+                result.textContent = 'ERROR: ' + error.message + '\n\n' + error.stack;
+                section.className = 'test-section error';
+                console.error(error);
+            }
+        }
+
+        // Test 3: Gantt with API data
+        async function testAPIGantt() {
+            const container = document.getElementById('gantt-api');
+            const result = document.getElementById('api-gantt-result');
+            const section = document.getElementById('test3');
+            
+            try {
+                container.innerHTML = '';
+                result.textContent = 'Loading API data...';
+                
+                const response = await fetch(`${API_URL}/tasks/timeline.php`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await response.json();
+                
+                result.textContent = `Received ${data.tasks.length} tasks\n\n`;
+                
+                // Process tasks for Gantt
+                const ganttTasks = data.tasks
+                    .filter(task => task.start_date && task.end_date)
+                    .map((task, index) => {
+                        result.textContent += `Task ${index + 1}: ${task.title}\n`;
+                        result.textContent += `  Start: '${task.start_date}' (len: ${task.start_date.length})\n`;
+                        result.textContent += `  End: '${task.end_date}' (len: ${task.end_date.length})\n`;
+                        
+                        // Clean dates
+                        let start = task.start_date;
+                        let end = task.end_date;
+                        
+                        // Remove time if present
+                        if (start.includes(' ')) start = start.split(' ')[0];
+                        if (end.includes(' ')) end = end.split(' ')[0];
+                        if (start.includes('T')) start = start.split('T')[0];
+                        if (end.includes('T')) end = end.split('T')[0];
+                        
+                        result.textContent += `  Cleaned Start: '${start}'\n`;
+                        result.textContent += `  Cleaned End: '${end}'\n\n`;
+                        
+                        return {
+                            id: String(task.id),
+                            name: task.title,
+                            start: start,
+                            end: end,
+                            progress: parseInt(task.progress) || 0
+                        };
+                    });
+                
+                result.textContent += '\n=== GANTT INPUT ===\n';
+                result.textContent += JSON.stringify(ganttTasks, null, 2);
+                
+                if (ganttTasks.length === 0) {
+                    result.textContent += '\n\n❌ No valid tasks to render!';
+                    section.className = 'test-section error';
+                    return;
+                }
+                
+                result.textContent += '\n\nAttempting to render Gantt...\n';
+                
+                const gantt = new Gantt(container, ganttTasks, {
+                    view_mode: 'Week',
+                    date_format: 'YYYY-MM-DD',
+                    bar_height: 30,
+                    padding: 18
+                });
+                
+                result.textContent += '✅ SUCCESS! Gantt rendered with API data!';
+                section.className = 'test-section success';
+                
+            } catch (error) {
+                result.textContent += '\n\n❌ ERROR: ' + error.message + '\n\n' + error.stack;
+                section.className = 'test-section error';
+                console.error(error);
+            }
+        }
+
+        // Test 4: Check database dates directly
+        async function checkDatabaseDates() {
+            const result = document.getElementById('db-result');
+            const section = document.getElementById('test4');
+            
+            try {
+                result.textContent = 'Checking database...';
+                
+                const response = await fetch(`${API_URL}/tasks/timeline.php`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                
+                const data = await response.json();
+                
+                result.textContent = '=== DATABASE DATE FORMATS ===\n\n';
+                
+                data.tasks.forEach((task, index) => {
+                    result.textContent += `Task ${index + 1}: ${task.title}\n`;
+                    result.textContent += `  created_at: ${task.start_date}\n`;
+                    result.textContent += `  deadline: ${task.end_date}\n`;
+                    
+                    // Character analysis
+                    if (task.start_date) {
+                        result.textContent += `  Start chars: `;
+                        for (let i = 0; i < Math.min(15, task.start_date.length); i++) {
+                            result.textContent += `[${i}:'${task.start_date[i]}'] `;
+                        }
+                        result.textContent += '\n';
+                    }
+                    
+                    result.textContent += '\n';
+                });
+                
+                section.className = 'test-section success';
+                
+            } catch (error) {
+                result.textContent = 'ERROR: ' + error.message;
+                section.className = 'test-section error';
+                console.error(error);
+            }
+        }
+
+        // Auto-run first test
+        if (token) {
+            console.log('Token found, ready to test');
+        } else {
+            alert('No token found! Please login first.');
+        }
+    </script>
+</body>
+</html>

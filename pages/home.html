@@ -178,13 +178,13 @@
                 <i class="fas fa-users text-2xl mb-2"></i>
                 <p class="font-semibold">Νέα Ομάδα</p>
             </button>
+            <button @click="goToTimeline()" class="p-4 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
+                <i class="fas fa-chart-gantt text-2xl mb-2"></i>
+                <p class="font-semibold">Timeline</p>
+            </button>
             <button @click="goToChat()" class="p-4 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
                 <i class="fas fa-comments text-2xl mb-2"></i>
                 <p class="font-semibold">Chat</p>
-            </button>
-            <button @click="goToTasks()" class="p-4 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition hover:-translate-y-1">
-                <i class="fas fa-chart-bar text-2xl mb-2"></i>
-                <p class="font-semibold">Αναφορές</p>
             </button>
         </div>
     </div>
@@ -256,6 +256,10 @@ function homePage() {
         formatDate(dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleDateString('el-GR', { day: 'numeric', month: 'short' });
+        },
+
+        goToTimeline() {
+            window.location.href = 'timeline.html';
         }
     }
 }

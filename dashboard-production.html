@@ -14,20 +14,15 @@
     <meta name="apple-mobile-web-app-title" content="TaskMesh">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="/TaskMesh/manifest.json">
+    <link rel="manifest" href="/task/manifest.json">
     
     <!-- App Icons -->
     <link rel="icon" type="image/png" href="icons/icon-192x192.png">
     <link rel="apple-touch-icon" href="icons/icon-192x192.png">
     
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Frappe Gantt for Timeline - Using UNPKG CDN -->
-    <link rel="stylesheet" href="https://unpkg.com/frappe-gantt@0.6.1/dist/frappe-gantt.css">
-    <script src="https://unpkg.com/frappe-gantt@0.6.1/dist/frappe-gantt.min.js"></script>
-    
+    <script src="/task/assets/tailwind.min.js"></script>
+    <script defer src="/task/assets/alpine.min.js"></script>
+    <link rel="stylesheet" href="/task/assets/fontawesome.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
@@ -831,37 +826,9 @@
         // ========================================
 
         let deferredPrompt;
-        let swRegistration;
 
-        // Register Service Worker
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
-                try {
-                    swRegistration = await navigator.serviceWorker.register('/task/service-worker.js', {
-                        scope: '/task/'
-                    });
-                    console.log('[PWA] Service Worker registered:', swRegistration.scope);
-
-                    // Check for updates periodically
-                    setInterval(() => {
-                        swRegistration.update();
-                    }, 60000); // Check every minute
-
-                    // Initialize push notifications if supported
-                    if ('PushManager' in window) {
-                        initializePushNotifications();
-                    }
-                } catch (error) {
-                    console.error('[PWA] Service Worker registration failed:', error);
-                }
-            });
-
-            // Handle service worker updates
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('[PWA] New Service Worker activated, reloading...');
-                window.location.reload();
-            });
-        }
+        // PWA OFFLINE FUNCTIONALITY REMOVED - Keep only install prompt for "Add to Home Screen"
+        // Service Worker disabled to avoid offline caching issues
 
         // Capture install prompt
         window.addEventListener('beforeinstallprompt', (e) => {

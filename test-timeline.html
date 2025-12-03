@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><title>Timeline Test</title></head><body>
+<h1>Timeline API Test</h1>
+<pre id="output">Testing...</pre>
+<script>
+(async () => {
+  const token = localStorage.getItem('token');
+  const output = document.getElementById('output');
+  output.textContent = 'Token: ' + (token ? token.substring(0, 50) + '...' : 'NOT FOUND') + '\n\n';
+  
+  if (!token) {
+    output.textContent += 'ERROR: No token found. Please login first at /TaskMesh/index.html';
+    return;
+  }
+  
+  try {
+    const response = await fetch('http://localhost/TaskMesh/api/tasks/timeline.php', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    output.textContent += 'Status: ' + response.status + ' ' + response.statusText + '\n\n';
+    const text = await response.text();
+    output.textContent += 'Response:\n' + text.substring(0, 500);
+  } catch (err) {
+    output.textContent += 'ERROR: ' + err.message;
+  }
+})();
+</script>
+</body></html>

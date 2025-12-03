@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generate TaskMesh Icons</title>
+</head>
+<body>
+    <h1>TaskMesh Icon Generator</h1>
+    <canvas id="canvas" width="512" height="512"></canvas>
+    <br><br>
+    <button onclick="downloadIcon(192)">Download 192x192</button>
+    <button onclick="downloadIcon(512)">Download 512x512</button>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function drawIcon() {
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            
+            // Draw rounded rectangle background
+            const radius = 120;
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(512 - radius, 0);
+            ctx.quadraticCurveTo(512, 0, 512, radius);
+            ctx.lineTo(512, 512 - radius);
+            ctx.quadraticCurveTo(512, 512, 512 - radius, 512);
+            ctx.lineTo(radius, 512);
+            ctx.quadraticCurveTo(0, 512, 0, 512 - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw checkmark
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 40;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.beginPath();
+            ctx.moveTo(120, 256);
+            ctx.lineTo(220, 356);
+            ctx.lineTo(392, 156);
+            ctx.stroke();
+            
+            // Draw text
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 72px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('TaskMesh', 256, 450);
+        }
+        
+        function downloadIcon(size) {
+            // Create new canvas at desired size
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = size;
+            tempCanvas.height = size;
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Draw scaled version
+            tempCtx.drawImage(canvas, 0, 0, size, size);
+            
+            // Download
+            const link = document.createElement('a');
+            link.download = `icon-${size}x${size}.png`;
+            link.href = tempCanvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Draw on load
+        drawIcon();
+    </script>
+</body>
+</html>

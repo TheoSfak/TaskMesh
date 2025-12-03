@@ -76,17 +76,19 @@ if ($method === 'POST') {
         exit();
     }
     
-    // Check if user is member of team
-    $query = "SELECT * FROM team_members WHERE team_id = :team_id AND user_id = :user_id";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(":team_id", $data->team_id);
-    $stmt->bindParam(":user_id", $user['id']);
-    $stmt->execute();
-    
-    if ($stmt->rowCount() === 0) {
-        http_response_code(403);
-        echo json_encode(array("error" => "You are not a member of this team"));
-        exit();
+    // Check if user is member of team (skip check for admin)
+    if ($user['role'] !== 'ADMIN') {
+        $query = "SELECT * FROM team_members WHERE team_id = :team_id AND user_id = :user_id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(":team_id", $data->team_id);
+        $stmt->bindParam(":user_id", $user['id']);
+        $stmt->execute();
+        
+        if ($stmt->rowCount() === 0) {
+            http_response_code(403);
+            echo json_encode(array("error" => "You are not a member of this team"));
+            exit();
+        }
     }
     
     // Insert message

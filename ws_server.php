@@ -4,6 +4,7 @@
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/config/jwt.php';
+require_once __DIR__ . '/lib/NotificationQueue.php';
 
 $host = '0.0.0.0';
 $port = 8080;
@@ -11,28 +12,34 @@ $port = 8080;
 $clients = [];
 $rooms = []; // team_id => [client1, client2, ...]
 
-// Create socket
+// Create WebSocket socket
 $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 socket_set_option($socket, SOL_SOCKET, SO_REUSEADDR, 1);
 socket_bind($socket, $host, $port);
 socket_listen($socket);
+socket_set_nonblock($socket);
 
 echo "🚀 TaskMesh WebSocket Server started on ws://$host:$port\n";
+echo "📬 Notifications enabled via file queue\n";
 
 while (true) {
-    $read = array_merge([$socket], array_keys($clients));
+    // Process notification queue first
+    process_notification_queue();
+    
+    $read = array_merge([$socket], array_column($clients, 'socket'));
     $write = $except = null;
     
-    if (socket_select($read, $write, $except, 0, 10000) < 1) {
+    if (socket_select($read, $write, $except, 0, 50000) < 1) {
         continue;
     }
     
-    // New connection
+    // New WebSocket connection
     if (in_array($socket, $read)) {
         $client = socket_accept($socket);
         socket_getpeername($client, $address);
-        $clients[(int)$client] = ['socket' => $client, 'handshake' => false, 'user_id' => null, 'rooms' => []];
-        echo "New connection from $address\n";
+        $client_id = spl_object_id($client);
+        $clients[$client_id] = ['socket' => $client, 'handshake' => false, 'user_id' => null, 'rooms' => []];
+        echo "New connection from $address (client_id: $client_id)\n";
         
         $key = array_search($socket, $read);
         unset($read[$key]);
@@ -40,7 +47,10 @@ while (true) {
     
     // Handle client messages
     foreach ($read as $client_socket) {
-        $client_id = (int)$client_socket;
+        $client_id = spl_object_id($client_socket);
+        
+        if (!isset($clients[$client_id])) continue;
+        
         $data = @socket_read($client_socket, 4096);
         
         if ($data === false || $data === '') {
@@ -133,9 +143,18 @@ function encode_message($text) {
 function handle_message($client_id, $payload) {
     global $clients, $rooms, $database, $db;
     
-    $event = $payload['event'] ?? null;
+    $event = $payload['event'] ?? $payload['type'] ?? null;
     
     switch ($event) {
+        case 'register':
+            // Register user_id for this connection (for notifications)
+            $user_id = $payload['user_id'] ?? null;
+            if ($user_id) {
+                $clients[$client_id]['user_id'] = $user_id;
+                echo "Client $client_id registered as user $user_id\n";
+            }
+            break;
+            
         case 'joinTeam':
             $team_id = $payload['team_id'] ?? null;
             if ($team_id) {
@@ -222,6 +241,34 @@ function broadcast_to_room($team_id, $message, $exclude_client = null) {
         if ($client_id === $exclude_client) continue;
         if (isset($clients[$client_id])) {
             @socket_write($clients[$client_id]['socket'], $encoded);
+        }
+    }
+}
+
+function broadcast_to_user($user_id, $message) {
+    global $clients;
+    
+    $encoded = encode_message(json_encode($message));
+    
+    foreach ($clients as $client_id => $client) {
+        if (isset($client['user_id']) && $client['user_id'] == $user_id) {
+            @socket_write($client['socket'], $encoded);
+            echo "Sent notification to user $user_id (client $client_id)\n";
+        }
+    }
+}
+
+function process_notification_queue() {
+    while ($item = NotificationQueue::pop()) {
+        $user_id = $item['user_id'] ?? null;
+        $notification = $item['notification'] ?? null;
+        
+        if ($user_id && $notification) {
+            echo "🔔 Broadcasting queued notification to user $user_id\n";
+            broadcast_to_user($user_id, [
+                'type' => 'notification',
+                'data' => $notification
+            ]);
         }
     }
 }

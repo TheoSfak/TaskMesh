@@ -1,36 +1,745 @@
 <div x-data="settingsPage()" x-init="init()" class="space-y-6">
     
-    <!-- Admin Check -->
-    <div x-show="!isAdmin" class="glass rounded-3xl p-12 text-center">
-        <i class="fas fa-lock text-6xl text-red-500 mb-4"></i>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Απαγορευμένη Πρόσβαση</h2>
-        <p class="text-gray-600">Μόνο οι Admins έχουν πρόσβαση σε αυτή τη σελίδα.</p>
+    <!-- Role-Based Settings Access -->
+    
+    <!-- MEMBER Settings -->
+    <div x-show="userRole === 'MEMBER'" class="space-y-6">
+        <div class="glass rounded-3xl p-8">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-6">
+                <i class="fas fa-user-cog mr-3"></i>Προσωπικές Ρυθμίσεις
+            </h1>
+            
+            <!-- Member Tabs -->
+            <div class="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+                <button @click="activeTab = 'profile'" 
+                        :class="activeTab === 'profile' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-user mr-2"></i>Προφίλ
+                </button>
+                <button @click="activeTab = 'preferences'" 
+                        :class="activeTab === 'preferences' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-sliders-h mr-2"></i>Προτιμήσεις
+                </button>
+                <button @click="activeTab = 'notifications'" 
+                        :class="activeTab === 'notifications' ? 'border-b-2 border-purple-600 text-purple-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-bell mr-2"></i>Ειδοποιήσεις
+                </button>
+            </div>
+            
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                Διαχειριστείτε τις προσωπικές σας ρυθμίσεις και προτιμήσεις.
+            </p>
+            
+            <!-- Member Settings Content -->
+            <div x-show="activeTab === 'profile'" class="space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                    <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                    Αλλαγή προφίλ και κωδικού γίνεται από τη σελίδα Profile.
+                </div>
+            </div>
+            
+            <div x-show="activeTab === 'preferences'" class="space-y-4">
+                <p class="text-sm text-gray-500">Επιλέξτε τις προτιμήσεις εμφάνισης και γλώσσας.</p>
+                <!-- Add preference settings here -->
+            </div>
+            
+            <div x-show="activeTab === 'notifications'" class="space-y-4">
+                <p class="text-sm text-gray-500">Διαχειριστείτε τις ειδοποιήσεις σας.</p>
+                <!-- Add notification settings here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- MANAGER Settings -->
+    <div x-show="userRole === 'MANAGER'" class="space-y-6">
+        <div class="glass rounded-3xl p-8">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-6">
+                <i class="fas fa-users-cog mr-3"></i>Ρυθμίσεις Manager
+            </h1>
+            
+            <!-- Manager Tabs -->
+            <div class="flex gap-2 mb-6 flex-wrap border-b border-gray-200 dark:border-gray-700">
+                <button @click="activeTab = 'profile'" 
+                        :class="activeTab === 'profile' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-user mr-2"></i>Προφίλ
+                </button>
+                <button @click="activeTab = 'teams'" 
+                        :class="activeTab === 'teams' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-users mr-2"></i>Ομάδες
+                </button>
+                <button @click="activeTab = 'preferences'" 
+                        :class="activeTab === 'preferences' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-sliders-h mr-2"></i>Προτιμήσεις
+                </button>
+                <button @click="activeTab = 'notifications'" 
+                        :class="activeTab === 'notifications' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600'"
+                        class="px-4 py-3 font-semibold transition">
+                    <i class="fas fa-bell mr-2"></i>Ειδοποιήσεις
+                </button>
+            </div>
+            
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                Διαχειριστείτε τις ομάδες σας και τις ρυθμίσεις ως Manager.
+            </p>
+            
+            <!-- Manager Settings Content -->
+            <div x-show="activeTab === 'profile'" class="space-y-4">
+                <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                    <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                    Αλλαγή προφίλ και κωδικού γίνεται από τη σελίδα Profile.
+                </div>
+            </div>
+            
+            <div x-show="activeTab === 'teams'" class="space-y-4">
+                <h3 class="text-lg font-semibold mb-2">Οι Ομάδες μου</h3>
+                <p class="text-sm text-gray-500 mb-4">Διαχειριστείτε τις ομάδες σας από τη σελίδα Teams.</p>
+                <a href="#teams" class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
+                    <i class="fas fa-users"></i>
+                    Μετάβαση στις Ομάδες
+                </a>
+            </div>
+            
+            <div x-show="activeTab === 'preferences'" class="space-y-4">
+                <p class="text-sm text-gray-500">Επιλέξτε τις προτιμήσεις εμφάνισης και γλώσσας.</p>
+            </div>
+            
+            <div x-show="activeTab === 'notifications'" class="space-y-4">
+                <p class="text-sm text-gray-500">Διαχειριστείτε τις ειδοποιήσεις σας.</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Admin Panel -->
-    <div x-show="isAdmin">
+    <!-- ADMIN Settings (Full Access) -->
+    <div x-show="userRole === 'ADMIN'">
         
         <!-- Tab Navigation -->
         <div class="glass rounded-3xl p-2 mb-6">
             <div class="flex gap-2 flex-wrap">
+                <button @click="activeTab = 'security'" 
+                        :class="activeTab === 'security' ? 'bg-white text-red-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-shield-alt mr-2"></i>
+                    Security
+                </button>
+                <button @click="activeTab = 'appearance'" 
+                        :class="activeTab === 'appearance' ? 'bg-white text-pink-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-paint-brush mr-2"></i>
+                    Appearance
+                </button>
+                <button @click="activeTab = 'system'" 
+                        :class="activeTab === 'system' ? 'bg-white text-indigo-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-cog mr-2"></i>
+                    System
+                </button>
                 <button @click="activeTab = 'email'" 
                         :class="activeTab === 'email' ? 'bg-white text-blue-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
-                        class="flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition">
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
                     <i class="fas fa-envelope mr-2"></i>
-                    SMTP Settings
+                    Email / SMTP
+                </button>
+                <button @click="activeTab = 'notifications'" 
+                        :class="activeTab === 'notifications' ? 'bg-white text-yellow-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-bell mr-2"></i>
+                    Notifications
+                </button>
+                <button @click="activeTab = 'maintenance'" 
+                        :class="activeTab === 'maintenance' ? 'bg-white text-orange-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-tools mr-2"></i>
+                    Maintenance
+                </button>
+                <button @click="activeTab = 'retention'" 
+                        :class="activeTab === 'retention' ? 'bg-white text-teal-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-clock mr-2"></i>
+                    Data Retention
                 </button>
                 <button @click="activeTab = 'preferences'" 
                         :class="activeTab === 'preferences' ? 'bg-white text-purple-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
-                        class="flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition">
-                    <i class="fas fa-bell mr-2"></i>
-                    Email Preferences
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
+                    <i class="fas fa-user-cog mr-2"></i>
+                    Preferences
                 </button>
                 <button @click="activeTab = 'templates'" 
                         :class="activeTab === 'templates' ? 'bg-white text-green-600 shadow-lg' : 'text-gray-600 hover:bg-white hover:bg-opacity-50'"
-                        class="flex-1 min-w-[150px] px-6 py-3 rounded-xl font-semibold transition">
+                        class="flex-1 min-w-[150px] px-4 py-3 rounded-xl font-semibold transition text-sm">
                     <i class="fas fa-palette mr-2"></i>
-                    Email Templates
+                    Templates
                 </button>
+            </div>
+        </div>
+
+        <!-- Security Settings Tab -->
+        <div x-show="activeTab === 'security'" class="glass rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🔐 Security Settings</h2>
+            
+            <form @submit.prevent="saveSystemSettings('security')" class="space-y-6">
+                <!-- Password Policies -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Password Policies</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Minimum Password Length
+                            </label>
+                            <input type="number" x-model="systemSettings.password_min_length" 
+                                   min="6" max="20"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200">
+                            <p class="text-xs text-gray-500 mt-1">Recommended: 8-12 characters</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.password_require_uppercase"
+                                   class="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                            <span class="font-medium text-gray-700">Require uppercase letters (A-Z)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.password_require_lowercase"
+                                   class="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                            <span class="font-medium text-gray-700">Require lowercase letters (a-z)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.password_require_numbers"
+                                   class="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                            <span class="font-medium text-gray-700">Require numbers (0-9)</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.password_require_special"
+                                   class="w-5 h-5 text-red-600 rounded focus:ring-2 focus:ring-red-500">
+                            <span class="font-medium text-gray-700">Require special characters (!@#$%^&*)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Session & Login -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Session & Login Security</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Session Timeout (minutes)
+                            </label>
+                            <input type="number" x-model="systemSettings.session_timeout" 
+                                   min="15" max="1440"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200">
+                            <p class="text-xs text-gray-500 mt-1">Default: 1440 (24 hours)</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Max Login Attempts
+                            </label>
+                            <input type="number" x-model="systemSettings.max_login_attempts" 
+                                   min="3" max="10"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200">
+                            <p class="text-xs text-gray-500 mt-1">Before account lockout</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Lockout Duration (minutes)
+                            </label>
+                            <input type="number" x-model="systemSettings.lockout_duration" 
+                                   min="5" max="60"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-red-500 focus:ring-2 focus:ring-red-200">
+                            <p class="text-xs text-gray-500 mt-1">Account lock time</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 shadow-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Security Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Appearance & Localization Tab -->
+        <div x-show="activeTab === 'appearance'" class="glass rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🎨 Appearance & Localization</h2>
+            
+            <form @submit.prevent="saveSystemSettings('appearance')" class="space-y-6">
+                <!-- Logo Upload -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Branding</h3>
+                    
+                    <div class="flex items-start gap-6">
+                        <div class="w-32 h-32 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center bg-gray-50">
+                            <img x-show="systemSettings.logo_path" :src="systemSettings.logo_path" class="w-full h-full object-contain rounded-xl">
+                            <i x-show="!systemSettings.logo_path" class="fas fa-image text-4xl text-gray-400"></i>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-gray-700 font-semibold mb-2">Upload Logo</label>
+                            <input type="file" @change="uploadLogo" accept="image/png,image/jpeg,image/jpg"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200">
+                            <p class="text-xs text-gray-500 mt-2">PNG or JPG, max 2MB. Recommended: 200x200px</p>
+                            <button type="button" @click="removeLogo" x-show="systemSettings.logo_path"
+                                    class="mt-2 text-red-600 hover:text-red-700 text-sm font-semibold">
+                                <i class="fas fa-trash mr-1"></i> Remove Logo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Date & Time Format -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Date & Time</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Date Format</label>
+                            <select x-model="systemSettings.date_format"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200">
+                                <option value="DD/MM/YYYY">DD/MM/YYYY (31/12/2025)</option>
+                                <option value="MM/DD/YYYY">MM/DD/YYYY (12/31/2025)</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD (2025-12-31)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Time Format</label>
+                            <select x-model="systemSettings.time_format"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200">
+                                <option value="24h">24-hour (14:30)</option>
+                                <option value="12h">12-hour (2:30 PM)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Timezone</label>
+                            <select x-model="systemSettings.timezone"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200">
+                                <option value="Europe/Athens">Europe/Athens (GMT+2)</option>
+                                <option value="Europe/London">Europe/London (GMT+0)</option>
+                                <option value="America/New_York">America/New_York (GMT-5)</option>
+                                <option value="America/Los_Angeles">America/Los_Angeles (GMT-8)</option>
+                                <option value="Asia/Tokyo">Asia/Tokyo (GMT+9)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Language & Colors -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Language & Colors</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Default Language</label>
+                            <select x-model="systemSettings.language"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200">
+                                <option value="el">Ελληνικά (Greek)</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Primary Color</label>
+                            <input type="color" x-model="systemSettings.primary_color"
+                                   class="w-full h-12 rounded-xl border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-200">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-xl font-semibold hover:from-pink-600 hover:to-pink-700 shadow-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Appearance Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- System Configuration Tab -->
+        <div x-show="activeTab === 'system'" class="glass rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">⚙️ System Configuration</h2>
+            
+            <form @submit.prevent="saveSystemSettings('system')" class="space-y-6">
+                
+                <!-- Installation Path (NEW) -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">
+                        <i class="fas fa-folder text-indigo-600 mr-2"></i>Installation Path
+                    </h3>
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                        <div class="flex items-start gap-3">
+                            <i class="fas fa-info-circle text-blue-600 mt-1"></i>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                    <strong>Auto-Detection Active:</strong> The system automatically detects the installation path.
+                                </p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">
+                                    • Leave empty for root installation (e.g., <code>http://domain.com/</code>)<br>
+                                    • Enter <code>/task</code> for subdirectory (e.g., <code>http://domain.com/task/</code>)<br>
+                                    • Current detected path: <strong x-text="'&quot;' + (systemSettings.installation_path || '/ (root)') + '&quot;'"></strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            Installation Path (Optional Override)
+                        </label>
+                        <div class="flex gap-2">
+                            <input type="text" 
+                                   x-model="systemSettings.installation_path" 
+                                   placeholder="/task or leave empty for root"
+                                   class="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                            <button type="button" 
+                                    @click="detectInstallationPath()"
+                                    class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-semibold transition">
+                                <i class="fas fa-sync-alt mr-2"></i>Auto-Detect
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            💡 <strong>Tip:</strong> Only change this if you move the application to a different directory.
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Tasks & Auto-Archive -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Task Management</h3>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            Auto-Archive Completed Tasks (days)
+                        </label>
+                        <input type="number" x-model="systemSettings.task_auto_archive_days" 
+                               min="7" max="365"
+                               class="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                        <p class="text-xs text-gray-500 mt-1">Automatically archive tasks after X days of completion (0 = disabled)</p>
+                    </div>
+                </div>
+                
+                <!-- User Registration -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">User Registration</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Registration Mode</label>
+                            <select x-model="systemSettings.registration_mode"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                                <option value="open">Open (Anyone can register)</option>
+                                <option value="invite">Invite Only (Requires invitation)</option>
+                                <option value="disabled">Disabled (No new registrations)</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Default User Role</label>
+                            <select x-model="systemSettings.default_user_role"
+                                    class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                                <option value="USER">USER</option>
+                                <option value="MANAGER">MANAGER</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Team Settings -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Team Settings</h3>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Maximum Team Size</label>
+                        <input type="number" x-model="systemSettings.max_team_size" 
+                               min="5" max="100"
+                               class="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                        <p class="text-xs text-gray-500 mt-1">Maximum number of members per team</p>
+                    </div>
+                </div>
+                
+                <!-- File Upload Settings -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">File Upload Settings</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Max Upload Size (MB)</label>
+                            <input type="number" x-model="systemSettings.max_file_upload_mb" 
+                                   min="1" max="100"
+                                   class="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Allowed File Types</label>
+                            <input type="text" x-model="systemSettings.allowed_file_types"
+                                   placeholder="jpg,png,pdf,doc,docx"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                            <p class="text-xs text-gray-500 mt-1">Comma-separated list of allowed extensions</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-indigo-600 hover:to-indigo-700 shadow-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Save System Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Notifications Configuration Tab -->
+        <div x-show="activeTab === 'notifications'" class="glass rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🔔 Notifications Configuration</h2>
+            
+            <form @submit.prevent="saveSystemSettings('notifications')" class="space-y-6">
+                <!-- Notification System Info -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Notification System</h3>
+                    
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-xl">
+                        <div class="flex items-start">
+                            <i class="fas fa-check-circle text-green-500 text-xl mt-0.5 mr-3"></i>
+                            <div>
+                                <p class="font-semibold text-green-800">Polling-Based Notifications</p>
+                                <p class="text-sm text-green-700">System checks for new notifications every 30 seconds automatically.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Delivery Methods -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Notification Delivery Methods</h3>
+                    
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.notification_email"
+                                   class="w-5 h-5 text-yellow-600 rounded focus:ring-2 focus:ring-yellow-500">
+                            <div>
+                                <span class="font-medium text-gray-700">Email Notifications</span>
+                                <p class="text-xs text-gray-500">Send notifications via email (configure SMTP in Email/SMTP tab)</p>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.notification_inapp"
+                                   class="w-5 h-5 text-yellow-600 rounded focus:ring-2 focus:ring-yellow-500">
+                            <div>
+                                <span class="font-medium text-gray-700">In-App Notifications</span>
+                                <p class="text-xs text-gray-500">Show notifications in the dashboard</p>
+                            </div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="systemSettings.notification_push"
+                                   class="w-5 h-5 text-yellow-600 rounded focus:ring-2 focus:ring-yellow-500">
+                            <div>
+                                <span class="font-medium text-gray-700">Browser Push Notifications</span>
+                                <p class="text-xs text-gray-500">Send push notifications to user's browser</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Batching Settings -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Notification Batching</h3>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">Batch Mode</label>
+                        <select x-model="systemSettings.notification_batch_mode"
+                                class="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200">
+                            <option value="immediate">Immediate (Send right away)</option>
+                            <option value="5min">Every 5 minutes</option>
+                            <option value="15min">Every 15 minutes</option>
+                            <option value="hourly">Hourly</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Group notifications to reduce email/push frequency</p>
+                    </div>
+                </div>
+                
+                <!-- Quiet Hours -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Quiet Hours</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">Start Time</label>
+                            <input type="time" x-model="systemSettings.quiet_hours_start"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">End Time</label>
+                            <input type="time" x-model="systemSettings.quiet_hours_end"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Suppress notifications during these hours (leave empty to disable)</p>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-xl font-semibold hover:from-yellow-600 hover:to-yellow-700 shadow-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Notification Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Maintenance & Tools Tab -->
+        <div x-show="activeTab === 'maintenance'" class="glass rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🛠️ Maintenance & Tools</h2>
+            
+            <div class="space-y-6">
+                <!-- System Health -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">System Health</h3>
+                    
+                    <div class="bg-gray-50 rounded-xl p-4 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Database Status:</span>
+                            <span x-text="healthCheck.database" class="px-3 py-1 rounded-full text-sm font-semibold"
+                                  :class="healthCheck.database === 'OK' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">WebSocket Server:</span>
+                            <span x-text="healthCheck.websocket" class="px-3 py-1 rounded-full text-sm font-semibold"
+                                  :class="healthCheck.websocket === 'Running' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="font-medium">Disk Space:</span>
+                            <span x-text="healthCheck.disk" class="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800"></span>
+                        </div>
+                    </div>
+                    
+                    <button @click="runHealthCheck" 
+                            class="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition">
+                        <i class="fas fa-heartbeat mr-2"></i>
+                        Run Health Check
+                    </button>
+                </div>
+                
+                <!-- Database Tools -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Database Tools</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button @click="optimizeDatabase" 
+                                class="px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-semibold hover:from-purple-600 hover:to-purple-700 shadow-lg transition">
+                            <i class="fas fa-database mr-2"></i>
+                            Optimize Database
+                        </button>
+                        
+                        <button @click="clearCache" 
+                                class="px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-orange-700 shadow-lg transition">
+                            <i class="fas fa-broom mr-2"></i>
+                            Clear Cache
+                        </button>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-2">Last optimization: <span x-text="systemSettings.last_optimization || 'Never'"></span></p>
+                </div>
+                
+                <!-- Backup & Restore -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Backup & Restore</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <button @click="createBackup" 
+                                class="px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 shadow-lg transition">
+                            <i class="fas fa-download mr-2"></i>
+                            Create Backup
+                        </button>
+                        
+                        <button @click="restoreBackup" 
+                                class="px-6 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 shadow-lg transition">
+                            <i class="fas fa-upload mr-2"></i>
+                            Restore Backup
+                        </button>
+                    </div>
+                    
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" x-model="systemSettings.auto_backup_enabled"
+                               @change="saveSystemSettings('maintenance')"
+                               class="w-5 h-5 text-green-600 rounded focus:ring-2 focus:ring-green-500">
+                        <span class="font-medium text-gray-700">Enable automatic backups</span>
+                    </label>
+                    
+                    <div x-show="systemSettings.auto_backup_enabled" class="mt-3">
+                        <select x-model="systemSettings.backup_frequency"
+                                @change="saveSystemSettings('maintenance')"
+                                class="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-2">Last backup: <span x-text="systemSettings.last_backup || 'Never'"></span></p>
+                </div>
+                
+                <!-- Import/Export -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Import / Export Data</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button @click="exportData" 
+                                class="px-6 py-4 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-xl font-semibold hover:from-cyan-600 hover:to-cyan-700 shadow-lg transition">
+                            <i class="fas fa-file-export mr-2"></i>
+                            Export All Data (JSON)
+                        </button>
+                        
+                        <button @click="importData" 
+                                class="px-6 py-4 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-semibold hover:from-indigo-600 hover:to-indigo-700 shadow-lg transition">
+                            <i class="fas fa-file-import mr-2"></i>
+                            Import Data
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Maintenance Mode -->
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Maintenance Mode</h3>
+                    
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-xl mb-4">
+                        <p class="text-sm text-yellow-800">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Enabling maintenance mode will prevent all users (except admins) from accessing the system.
+                        </p>
+                    </div>
+                    
+                    <label class="flex items-center gap-3 cursor-pointer mb-4">
+                        <input type="checkbox" x-model="systemSettings.maintenance_mode"
+                               @change="toggleMaintenanceMode"
+                               class="w-5 h-5 text-orange-600 rounded focus:ring-2 focus:ring-orange-500">
+                        <span class="font-medium text-gray-700" :class="systemSettings.maintenance_mode ? 'text-orange-600' : ''">
+                            Enable Maintenance Mode
+                        </span>
+                    </label>
+                    
+                    <div x-show="systemSettings.maintenance_mode">
+                        <label class="block text-gray-700 font-semibold mb-2">Maintenance Message</label>
+                        <textarea x-model="systemSettings.maintenance_message"
+                                  rows="3"
+                                  class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-orange-500 focus:ring-2 focus:ring-orange-200"></textarea>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -180,6 +889,122 @@
                             class="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50">
                         <span x-show="!savingEmail"><i class="fas fa-save mr-2"></i>Save Settings</span>
                         <span x-show="savingEmail"><i class="fas fa-spinner fa-spin mr-2"></i>Saving...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Data Retention Tab -->
+        <div x-show="activeTab === 'retention'" class="glass rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🕒 Data Retention Policies</h2>
+            
+            <form @submit.prevent="saveSystemSettings('retention')" class="space-y-6">
+                <!-- Info Banner -->
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-xl">
+                    <div class="flex items-start">
+                        <i class="fas fa-exclamation-triangle text-yellow-500 text-xl mt-0.5 mr-3"></i>
+                        <div class="text-sm text-yellow-800">
+                            <p class="font-semibold mb-1">Automatic Data Cleanup</p>
+                            <p>Configure how long to keep old data before automatic deletion. Set to 0 to disable automatic cleanup for that item.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Task Retention -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Task Retention</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Auto-archive completed tasks after (days)
+                            </label>
+                            <input type="number" x-model="systemSettings.archive_completed_tasks_days" 
+                                   min="0" max="365"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200">
+                            <p class="text-xs text-gray-500 mt-1">Completed tasks will be archived and hidden from view (0 = disabled)</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Permanently delete archived tasks after (days)
+                            </label>
+                            <input type="number" x-model="systemSettings.delete_archived_tasks_days" 
+                                   min="0" max="3650"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200">
+                            <p class="text-xs text-gray-500 mt-1">Archived tasks will be permanently deleted (0 = never delete)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Retention -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">User Account Retention</h3>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            Delete inactive user accounts after (months)
+                        </label>
+                        <input type="number" x-model="systemSettings.delete_inactive_users_months" 
+                               min="0" max="60"
+                               class="w-full md:w-1/2 px-4 py-3 rounded-xl border border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200">
+                        <p class="text-xs text-gray-500 mt-1">Users who haven't logged in will be deleted (0 = disabled, recommended: 12-24 months)</p>
+                    </div>
+                </div>
+                
+                <!-- Notification Retention -->
+                <div class="border-b border-gray-200 pb-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Notification & Comment Retention</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Clean old notifications after (days)
+                            </label>
+                            <input type="number" x-model="systemSettings.clean_old_notifications_days" 
+                                   min="0" max="365"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200">
+                            <p class="text-xs text-gray-500 mt-1">Read notifications older than this will be deleted (0 = disabled)</p>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-semibold mb-2">
+                                Clean old comments after (days)
+                            </label>
+                            <input type="number" x-model="systemSettings.clean_old_comments_days" 
+                                   min="0" max="3650"
+                                   class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-200">
+                            <p class="text-xs text-gray-500 mt-1">Comments on deleted tasks will be removed (0 = keep forever)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Cleanup Status -->
+                <div class="bg-gray-50 rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Cleanup Status</h3>
+                    
+                    <div class="space-y-2">
+                        <p class="text-sm text-gray-700">
+                            <span class="font-semibold">Last cleanup run:</span> 
+                            <span x-text="systemSettings.last_retention_cleanup || 'Never'"></span>
+                        </p>
+                        <button type="button" @click="runRetentionCleanup"
+                                class="px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-xl font-semibold hover:from-teal-600 hover:to-teal-700 shadow-lg transition">
+                            <i class="fas fa-broom mr-2"></i>
+                            Run Cleanup Now
+                        </button>
+                        <p class="text-xs text-gray-500 mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Cleanup runs automatically daily at midnight. You can also run it manually here.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end">
+                    <button type="submit" 
+                            class="px-8 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white rounded-xl font-semibold hover:from-teal-600 hover:to-teal-700 shadow-lg transition">
+                        <i class="fas fa-save mr-2"></i>
+                        Save Retention Settings
                     </button>
                 </div>
             </form>
@@ -620,11 +1445,92 @@
 </div>
 
 <script>
+// API Request Helper
+async function apiRequest(endpoint, options = {}) {
+    const token = localStorage.getItem('token');
+    
+    const config = {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    };
+
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`/TaskMesh/api${endpoint}`, config);
+    
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+}
+
 function settingsPage() {
     return {
         currentUser: JSON.parse(localStorage.getItem('user') || '{}'),
+        userRole: JSON.parse(localStorage.getItem('user') || '{}').role || 'MEMBER',
         isAdmin: false,
-        activeTab: 'email',
+        activeTab: 'profile',
+        
+        // System Settings (New)
+        systemSettings: {
+            // Security
+            password_min_length: 8,
+            password_require_uppercase: true,
+            password_require_lowercase: true,
+            password_require_numbers: true,
+            password_require_special: false,
+            session_timeout: 1440,
+            max_login_attempts: 5,
+            lockout_duration: 15,
+            // Appearance
+            date_format: 'DD/MM/YYYY',
+            time_format: '24h',
+            timezone: 'Europe/Athens',
+            language: 'el',
+            logo_path: null,
+            primary_color: '#667eea',
+            // System
+            task_auto_archive_days: 30,
+            registration_mode: 'open',
+            default_user_role: 'USER',
+            max_team_size: 50,
+            max_file_upload_mb: 10,
+            allowed_file_types: 'jpg,jpeg,png,pdf,doc,docx,xls,xlsx,txt',
+            // Notifications
+            websocket_enabled: true,
+            websocket_port: 8080,
+            notification_email: true,
+            notification_inapp: true,
+            notification_push: false,
+            notification_batch_mode: 'immediate',
+            quiet_hours_start: null,
+            quiet_hours_end: null,
+            // Maintenance
+            maintenance_mode: false,
+            maintenance_message: 'System is under maintenance. Please check back soon.',
+            last_backup: null,
+            last_optimization: null,
+            auto_backup_enabled: false,
+            backup_frequency: 'daily',
+            // Data Retention
+            archive_completed_tasks_days: 90,
+            delete_archived_tasks_days: 365,
+            delete_inactive_users_months: 12,
+            clean_old_notifications_days: 30,
+            clean_old_comments_days: 0,
+            last_retention_cleanup: null
+        },
+        healthCheck: {
+            database: 'Checking...',
+            websocket: 'Checking...',
+            disk: 'Checking...'
+        },
         
         // Email Settings (SMTP)
         emailSettings: {
@@ -687,11 +1593,340 @@ function settingsPage() {
 
         async init() {
             this.isAdmin = this.currentUser.role === 'ADMIN';
-            if (!this.isAdmin) return;
+            this.userRole = this.currentUser.role || 'MEMBER';
+            
+            // Set initial tab based on role
+            if (this.userRole === 'ADMIN') {
+                this.activeTab = 'security';
+                await this.loadSystemSettings();
+                await this.loadEmailSettings();
+                await this.loadPreferences();
+                await this.loadTeams();
+            } else {
+                this.activeTab = 'profile';
+            }
+        },
 
-            await this.loadEmailSettings();
-            await this.loadPreferences();
-            await this.loadTeams();
+        // System Settings Functions
+        async loadSystemSettings() {
+            try {
+                const response = await apiRequest('/settings/system.php');
+                if (response.success && response.settings) {
+                    // Flatten nested structure
+                    Object.keys(response.settings).forEach(category => {
+                        Object.assign(this.systemSettings, response.settings[category]);
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading system settings:', err);
+            }
+        },
+
+        async saveSystemSettings(category) {
+            try {
+                // Get settings for this category
+                const categorySettings = {};
+                const categoryMap = {
+                    'security': ['password_min_length', 'password_require_uppercase', 'password_require_lowercase', 'password_require_numbers', 'password_require_special', 'session_timeout', 'max_login_attempts', 'lockout_duration'],
+                    'appearance': ['date_format', 'time_format', 'timezone', 'language', 'logo_path', 'primary_color'],
+                    'system': ['installation_path', 'task_auto_archive_days', 'registration_mode', 'default_user_role', 'max_team_size', 'max_file_upload_mb', 'allowed_file_types'],
+                    'notifications': ['websocket_enabled', 'websocket_port', 'notification_email', 'notification_inapp', 'notification_push', 'notification_batch_mode', 'quiet_hours_start', 'quiet_hours_end'],
+                    'maintenance': ['maintenance_mode', 'maintenance_message', 'auto_backup_enabled', 'backup_frequency'],
+                    'retention': ['archive_completed_tasks_days', 'delete_archived_tasks_days', 'delete_inactive_users_months', 'clean_old_notifications_days', 'clean_old_comments_days']
+                };
+
+                const keys = categoryMap[category] || [];
+                keys.forEach(key => {
+                    if (this.systemSettings[key] !== undefined) {
+                        categorySettings[key] = this.systemSettings[key];
+                    }
+                });
+
+                const response = await apiRequest('/settings/system.php', {
+                    method: 'POST',
+                    body: JSON.stringify({ settings: categorySettings })
+                });
+
+                if (response.success) {
+                    this.showToast('Success', response.message || 'Settings saved successfully', 'success');
+                    
+                    // If installation_path was changed, reload the page to apply new paths
+                    if (category === 'system' && categorySettings.installation_path !== undefined) {
+                        setTimeout(() => {
+                            this.showToast('Info', 'Reloading to apply new installation path...', 'info');
+                            setTimeout(() => window.location.reload(), 1000);
+                        }, 1000);
+                    }
+                }
+            } catch (err) {
+                this.showToast('Error', err.message || 'Failed to save settings', 'error');
+            }
+        },
+        
+        // Detect installation path automatically
+        detectInstallationPath() {
+            const currentPath = window.location.pathname;
+            const parts = currentPath.split('/').filter(p => p);
+            
+            const knownFiles = ['dashboard.html', 'dashboard-production.html', 'index.html', 'settings.html'];
+            const knownDirs = ['pages', 'api', 'assets'];
+            
+            let baseParts = [];
+            for (let part of parts) {
+                if (knownFiles.includes(part) || knownDirs.includes(part)) {
+                    break;
+                }
+                baseParts.push(part);
+            }
+            
+            const detectedPath = baseParts.length > 0 ? '/' + baseParts.join('/') : '';
+            this.systemSettings.installation_path = detectedPath;
+            
+            this.showToast('Success', `Detected path: "${detectedPath || '/ (root)'}"`, 'success');
+        },
+
+        async uploadLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file
+            if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+                this.showToast('Error', 'Only PNG and JPG files are allowed', 'error');
+                return;
+            }
+
+            if (file.size > 2 * 1024 * 1024) {
+                this.showToast('Error', 'File size must be less than 2MB', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('logo', file);
+
+                const response = await fetch(`${API_URL}/settings/logo.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    this.systemSettings.logo_path = result.logo_path;
+                    await this.saveSystemSettings('appearance');
+                    this.showToast('Success', 'Logo uploaded successfully', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (err) {
+                this.showToast('Error', err.message || 'Failed to upload logo', 'error');
+            }
+        },
+
+        async removeLogo() {
+            if (!confirm('Remove logo and use default branding?')) return;
+            
+            this.systemSettings.logo_path = null;
+            await this.saveSystemSettings('appearance');
+            this.showToast('Success', 'Logo removed', 'success');
+        },
+
+        async runHealthCheck() {
+            this.healthCheck = {
+                database: 'Checking...',
+                websocket: 'Checking...',
+                disk: 'Checking...'
+            };
+
+            try {
+                const response = await apiRequest('/maintenance/health-check.php');
+                if (response.success) {
+                    this.healthCheck = response.health;
+                }
+            } catch (err) {
+                this.showToast('Error', 'Failed to run health check', 'error');
+            }
+        },
+
+        async optimizeDatabase() {
+            if (!confirm('Optimize database tables? This may take a few moments.')) return;
+
+            try {
+                const response = await apiRequest('/maintenance/optimize.php', { method: 'POST' });
+                if (response.success) {
+                    this.systemSettings.last_optimization = new Date().toLocaleString('el-GR');
+                    this.showToast('Success', response.message || 'Database optimized', 'success');
+                }
+            } catch (err) {
+                this.showToast('Error', err.message || 'Failed to optimize database', 'error');
+            }
+        },
+
+        async clearCache() {
+            if (!confirm('Clear all cache files?')) return;
+
+            try {
+                const response = await apiRequest('/maintenance/clear-cache.php', { method: 'POST' });
+                if (response.success) {
+                    this.showToast('Success', response.message || 'Cache cleared', 'success');
+                }
+            } catch (err) {
+                this.showToast('Error', err.message || 'Failed to clear cache', 'error');
+            }
+        },
+
+        async createBackup() {
+            if (!confirm('Create a backup of the database?')) return;
+
+            try {
+                const response = await apiRequest('/maintenance/backup.php', { method: 'POST' });
+                if (response.success) {
+                    this.systemSettings.last_backup = new Date().toLocaleString('el-GR');
+                    
+                    // Download backup file
+                    if (response.download_url) {
+                        window.open(response.download_url, '_blank');
+                    }
+                    
+                    this.showToast('Success', response.message || 'Backup created', 'success');
+                }
+            } catch (err) {
+                this.showToast('Error', err.message || 'Failed to create backup', 'error');
+            }
+        },
+
+        async restoreBackup() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.sql';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!confirm('⚠️ WARNING: This will replace all current data! Are you sure?')) return;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('backup', file);
+
+                    const response = await fetch(`${API_URL}/maintenance/restore.php`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast('Success', result.message || 'Backup restored', 'success');
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (err) {
+                    this.showToast('Error', err.message || 'Failed to restore backup', 'error');
+                }
+            };
+            input.click();
+        },
+
+        async exportData() {
+            try {
+                const response = await apiRequest('/maintenance/export.php', { method: 'POST' });
+                if (response.success && response.download_url) {
+                    window.open(response.download_url, '_blank');
+                    this.showToast('Success', 'Data exported successfully', 'success');
+                }
+            } catch (err) {
+                this.showToast('Error', err.message || 'Failed to export data', 'error');
+            }
+        },
+
+        async importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                if (!confirm('Import data from JSON file? Existing data will be merged.')) return;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('data', file);
+
+                    const response = await fetch(`${API_URL}/maintenance/import.php`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: formData
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        this.showToast('Success', result.message || 'Data imported', 'success');
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (err) {
+                    this.showToast('Error', err.message || 'Failed to import data', 'error');
+                }
+            };
+            input.click();
+        },
+
+        async toggleMaintenanceMode() {
+            const action = this.systemSettings.maintenance_mode ? 'enable' : 'disable';
+            if (!confirm(`${action === 'enable' ? 'Enable' : 'Disable'} maintenance mode?`)) {
+                this.systemSettings.maintenance_mode = !this.systemSettings.maintenance_mode;
+                return;
+            }
+
+            await this.saveSystemSettings('maintenance');
+        },
+
+        async runRetentionCleanup() {
+            if (!confirm('Run data retention cleanup now? This will permanently delete old data based on your retention settings.')) {
+                return;
+            }
+
+            try {
+                const data = await apiRequest('/maintenance/retention-cleanup.php', {
+                    method: 'POST'
+                });
+
+                if (data.success) {
+                    const summary = `Cleanup completed:\n` +
+                                  `- Tasks archived: ${data.cleaned.tasks_archived}\n` +
+                                  `- Tasks deleted: ${data.cleaned.tasks_deleted}\n` +
+                                  `- Users deleted: ${data.cleaned.users_deleted}\n` +
+                                  `- Notifications deleted: ${data.cleaned.notifications_deleted}\n` +
+                                  `- Comments deleted: ${data.cleaned.comments_deleted}`;
+                    
+                    alert(summary);
+                    this.showToast('Success', 'Retention cleanup completed', 'success');
+                    
+                    // Reload settings to get updated timestamp
+                    await this.loadSystemSettings();
+                }
+            } catch (err) {
+                alert('Cleanup failed: ' + (err.message || 'Unknown error'));
+                this.showToast('Error', 'Cleanup failed', 'error');
+            }
+        },
+
+        showToast(title, message, type = 'info') {
+            // Use dashboard's toast system if available
+            if (window.dashboardApp && window.dashboardApp.showToast) {
+                window.dashboardApp.showToast(title, message);
+            } else {
+                alert(`${title}: ${message}`);
+            }
         },
 
         async loadEmailSettings() {

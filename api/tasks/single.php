@@ -189,6 +189,9 @@ if ($method === 'PUT') {
     
     // Track if status changed to COMPLETED for email notification
     $statusChangedToCompleted = isset($data->status) && $data->status === 'COMPLETED' && $task['status'] !== 'COMPLETED';
+    $statusChanged = isset($data->status) && $data->status !== $task['status'];
+    $oldStatus = $task['status'];
+    $newStatus = isset($data->status) ? $data->status : $oldStatus;
     
     // Start transaction
     $db->beginTransaction();
@@ -295,6 +298,38 @@ if ($method === 'PUT') {
                     $task_id,
                     $user['first_name'] . ' ' . $user['last_name']
                 );
+            }
+        }
+        
+        // Send in-app notification for status changes (to creator and all assignees)
+        if ($statusChanged) {
+            require_once __DIR__ . '/../../lib/NotificationService.php';
+            $changedByName = $user['first_name'] . ' ' . $user['last_name'];
+            
+            // Notify creator if they're not the one making the change
+            if ($task['creator_id'] != $user['id']) {
+                NotificationService::taskStatusChanged(
+                    $task['creator_id'],
+                    $task['title'],
+                    $task_id,
+                    $oldStatus,
+                    $newStatus,
+                    $changedByName
+                );
+            }
+            
+            // Notify all assignees (except the one making the change)
+            foreach ($currentAssigneeIds as $assigneeId) {
+                if ($assigneeId != $user['id']) {
+                    NotificationService::taskStatusChanged(
+                        $assigneeId,
+                        $task['title'],
+                        $task_id,
+                        $oldStatus,
+                        $newStatus,
+                        $changedByName
+                    );
+                }
             }
         }
         

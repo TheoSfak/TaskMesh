@@ -115,6 +115,56 @@ CREATE TABLE messages (
     INDEX idx_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Notifications Table
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(255) DEFAULT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user (user_id),
+    INDEX idx_read (is_read),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Task Dependencies Table για Gantt Chart
+CREATE TABLE task_dependencies (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    task_id INT NOT NULL,
+    depends_on_task_id INT NOT NULL,
+    dependency_type ENUM('blocks', 'must_finish_before', 'related') DEFAULT 'must_finish_before',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (depends_on_task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_dependency (task_id, depends_on_task_id),
+    INDEX idx_task (task_id),
+    INDEX idx_depends_on (depends_on_task_id),
+    INDEX idx_dependency_type (dependency_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Milestones Table για Timeline
+CREATE TABLE milestones (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    team_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    target_date DATE NOT NULL,
+    status ENUM('upcoming', 'in_progress', 'completed', 'missed') DEFAULT 'upcoming',
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_team (team_id),
+    INDEX idx_target_date (target_date),
+    INDEX idx_status (status),
+    INDEX idx_created_by (created_by)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Insert Default Admin User (password: admin123)
 -- NOTE: This hash is generated with PHP password_hash() - verified working
 INSERT INTO users (email, password, first_name, last_name, role, is_active) VALUES 

@@ -26,14 +26,63 @@ if (!filter_var($data->email, FILTER_VALIDATE_EMAIL)) {
     exit();
 }
 
-if (strlen($data->password) < 8) {
-    http_response_code(400);
-    echo json_encode(array("error" => "Password must be at least 8 characters"));
+$database = new Database();
+$db = $database->getConnection();
+
+// Load password policies from system settings
+$query = "SELECT setting_key, setting_value, setting_type FROM system_settings 
+          WHERE setting_key IN ('password_min_length', 'password_require_uppercase', 'password_require_lowercase', 'password_require_numbers', 'password_require_special', 'registration_mode', 'default_user_role')";
+$stmt = $db->query($query);
+$settings = [];
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+    $value = $row['setting_value'];
+    if ($row['setting_type'] === 'integer') {
+        $value = (int)$value;
+    } elseif ($row['setting_type'] === 'boolean') {
+        $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+    $settings[$row['setting_key']] = $value;
+}
+
+// Check registration mode
+$registrationMode = $settings['registration_mode'] ?? 'open';
+if ($registrationMode === 'disabled') {
+    http_response_code(403);
+    echo json_encode(array("error" => "User registration is currently disabled"));
     exit();
 }
 
-$database = new Database();
-$db = $database->getConnection();
+// Validate password policies
+$minLength = $settings['password_min_length'] ?? 8;
+if (strlen($data->password) < $minLength) {
+    http_response_code(400);
+    echo json_encode(array("error" => "Password must be at least $minLength characters"));
+    exit();
+}
+
+if (($settings['password_require_uppercase'] ?? false) && !preg_match('/[A-Z]/', $data->password)) {
+    http_response_code(400);
+    echo json_encode(array("error" => "Password must contain at least one uppercase letter"));
+    exit();
+}
+
+if (($settings['password_require_lowercase'] ?? false) && !preg_match('/[a-z]/', $data->password)) {
+    http_response_code(400);
+    echo json_encode(array("error" => "Password must contain at least one lowercase letter"));
+    exit();
+}
+
+if (($settings['password_require_numbers'] ?? false) && !preg_match('/[0-9]/', $data->password)) {
+    http_response_code(400);
+    echo json_encode(array("error" => "Password must contain at least one number"));
+    exit();
+}
+
+if (($settings['password_require_special'] ?? false) && !preg_match('/[^A-Za-z0-9]/', $data->password)) {
+    http_response_code(400);
+    echo json_encode(array("error" => "Password must contain at least one special character"));
+    exit();
+}
 
 // Check if email already exists
 $query = "SELECT id FROM users WHERE email = :email";
@@ -50,13 +99,15 @@ if ($stmt->rowCount() > 0) {
 // Hash password
 $password_hash = password_hash($data->password, PASSWORD_BCRYPT, ['cost' => 12]);
 
-// Insert user
+// Insert user with default role from settings
 $query = "INSERT INTO users (email, password, first_name, last_name, role, manager_id) VALUES (:email, :password, :first_name, :last_name, :role, :manager_id)";
 $stmt = $db->prepare($query);
 
-$role = isset($data->role) ? $data->role : 'MEMBER';
+// Use default role from settings if not provided
+$defaultRole = $settings['default_user_role'] ?? 'MEMBER';
+$role = isset($data->role) ? $data->role : $defaultRole;
 if (!in_array($role, ['ADMIN', 'MANAGER', 'MEMBER'])) {
-    $role = 'MEMBER';
+    $role = $defaultRole;
 }
 
 // Only set manager_id for MEMBER role

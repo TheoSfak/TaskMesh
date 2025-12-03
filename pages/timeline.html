@@ -1,0 +1,867 @@
+<!-- Timeline Page Component - Loads inside Dashboard -->
+
+<script>
+// Define timelineApp function BEFORE the HTML that uses it
+function timelineApp() {
+    return {
+        loading: true,
+        tasks: [],
+        milestones: [],
+        teams: [],
+        users: [],
+        criticalPath: {
+            task_ids: [],
+            total_duration: 0,
+            estimated_completion: null
+        },
+        filters: {
+            team_id: '',
+            user_id: '',
+            start_date: '',
+            end_date: ''
+        },
+        viewMode: 'gantt',
+        zoom: 'Week',
+        showCriticalPath: false,
+        showMilestoneModal: false,
+        creatingMilestone: false,
+        milestoneError: '',
+        editingMilestone: null,
+        newMilestone: {
+            team_id: '',
+            title: '',
+            description: '',
+            target_date: '',
+            status: 'upcoming'
+        },
+        ganttInstance: null,
+
+        async init() {
+            await this.loadTeams();
+            await this.loadUsers();
+            await this.loadTimeline();
+            await this.loadCriticalPath();
+        },
+
+        async loadTeams() {
+            try {
+                const response = await fetch(`${API_URL}/teams/index.php`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                if (response.ok) {
+                    this.teams = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading teams:', error);
+            }
+        },
+
+        async loadUsers() {
+            try {
+                const response = await fetch(`${API_URL}/users/index.php`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                if (response.ok) {
+                    this.users = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        },
+
+        async loadTimeline() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.filters.team_id) params.append('team_id', this.filters.team_id);
+                if (this.filters.user_id) params.append('user_id', this.filters.user_id);
+                if (this.filters.start_date) params.append('start_date', this.filters.start_date);
+                if (this.filters.end_date) params.append('end_date', this.filters.end_date);
+
+                const response = await fetch(`${API_URL}/tasks/timeline.php?${params}`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Timeline data:', data);
+                console.log('Milestones received:', data.milestones);
+                
+                this.tasks = data.tasks || [];
+                this.milestones = data.milestones || [];
+                
+                // Wait for DOM update then render
+                this.$nextTick(() => {
+                    if (this.tasks.length > 0) {
+                        this.renderGantt();
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading timeline:', error);
+                alert('Σφάλμα φόρτωσης timeline: ' + error.message);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadCriticalPath() {
+            try {
+                const params = new URLSearchParams();
+                if (this.filters.team_id) params.append('team_id', this.filters.team_id);
+
+                const response = await fetch(`${API_URL}/tasks/critical-path.php?${params}`, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                });
+                
+                if (response.ok) {
+                    this.criticalPath = await response.json();
+                }
+            } catch (error) {
+                console.error('Error loading critical path:', error);
+            }
+        },
+
+        renderGantt() {
+            // Check if Gantt library is loaded
+            if (typeof Gantt === 'undefined') {
+                console.error('Gantt library not loaded yet! Retrying in 500ms...');
+                setTimeout(() => this.renderGantt(), 500);
+                return;
+            }
+            
+            if (this.tasks.length === 0) {
+                console.log('No tasks to render');
+                const container = document.getElementById('gantt');
+                if (container) {
+                    container.innerHTML = '<div class="p-4 text-gray-600">Δεν υπάρχουν εργασίες με ημερομηνίες</div>';
+                }
+                return;
+            }
+
+            // Filter tasks that have valid dates and format them properly
+            const ganttTasks = this.tasks
+                .filter(task => {
+                    const hasValidDates = task.start_date && task.end_date;
+                    if (!hasValidDates) {
+                        console.warn('Task missing dates:', task.id, task.title);
+                    }
+                    return hasValidDates;
+                })
+                .map(task => {
+                    try {
+                        // Ensure dates are in YYYY-MM-DD format
+                        let startDate = task.start_date;
+                        let endDate = task.end_date;
+                        
+                        // If dates include time, extract just the date part
+                        if (typeof startDate === 'string' && startDate.includes('T')) {
+                            startDate = startDate.split('T')[0];
+                        }
+                        if (typeof endDate === 'string' && endDate.includes('T')) {
+                            endDate = endDate.split('T')[0];
+                        }
+                        
+                        // Validate date format (YYYY-MM-DD)
+                        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                        if (!dateRegex.test(startDate) || !dateRegex.test(endDate)) {
+                            console.error('Invalid date format for task:', task.id, {startDate, endDate});
+                            return null;
+                        }
+                        
+                        // Use simple YYYY-MM-DD format (proven to work in debug test)
+                        return {
+                            id: String(task.id),
+                            name: task.title || 'Untitled Task',
+                            start: startDate,
+                            end: endDate,
+                            progress: parseInt(task.progress) || 0,
+                            dependencies: task.dependencies ? task.dependencies.map(dep => String(dep.depends_on_task_id)).join(',') : '',
+                            custom_class: (this.criticalPath.task_ids && this.criticalPath.task_ids.includes(task.id)) ? 'bar-critical' : ''
+                        };
+                    } catch (error) {
+                        console.error('Error processing task:', task.id, error);
+                        return null;
+                    }
+                })
+                .filter(task => task !== null);
+
+            console.log('Gantt tasks prepared:', ganttTasks);
+
+            if (ganttTasks.length === 0) {
+                const container = document.getElementById('gantt');
+                if (container) {
+                    container.innerHTML = '<div class="p-4 text-gray-600">Δεν υπάρχουν εργασίες με έγκυρες ημερομηνίες έναρξης/λήξης</div>';
+                }
+                return;
+            }
+
+            const container = document.getElementById('gantt');
+            if (!container) {
+                console.error('Gantt container not found!');
+                return;
+            }
+            
+            container.innerHTML = '';
+
+            try {
+                this.ganttInstance = new Gantt(container, ganttTasks, {
+                    view_mode: this.zoom,
+                    bar_height: 30,
+                    bar_corner_radius: 3,
+                    arrow_curve: 5,
+                    padding: 18,
+                    date_format: 'YYYY-MM-DD',
+                    custom_popup_html: (task) => {
+                        const taskData = this.tasks.find(t => t.id.toString() === task.id);
+                        if (!taskData) return task.name;
+                        
+                        return `
+                            <div class="p-3">
+                                <h5 class="font-bold mb-2">${taskData.title}</h5>
+                                <p class="text-sm mb-1"><strong>Status:</strong> ${taskData.status}</p>
+                                <p class="text-sm mb-1"><strong>Priority:</strong> ${taskData.priority}</p>
+                                <p class="text-sm mb-1"><strong>Progress:</strong> ${taskData.progress}%</p>
+                                <p class="text-sm"><strong>Duration:</strong> ${taskData.duration} days</p>
+                            </div>
+                        `;
+                    }
+                });
+            } catch (error) {
+                console.error('Error rendering Gantt:', error);
+                container.innerHTML = '<p class="text-red-600 p-4">Σφάλμα εμφάνισης Gantt Chart: ' + error.message + '</p>';
+            }
+        },
+
+        setZoom(level) {
+            this.zoom = level;
+            if (this.ganttInstance) {
+                this.ganttInstance.change_view_mode(level);
+            }
+        },
+
+        goToToday() {
+            const today = new Date().toISOString().split('T')[0];
+            this.filters.start_date = today;
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + 3);
+            this.filters.end_date = endDate.toISOString().split('T')[0];
+            this.loadTimeline();
+        },
+
+        getPriorityColor(priority) {
+            const colors = {
+                'LOW': 'bg-gray-100 text-gray-700',
+                'MEDIUM': 'bg-blue-100 text-blue-700',
+                'HIGH': 'bg-orange-100 text-orange-700',
+                'URGENT': 'bg-red-100 text-red-700'
+            };
+            return colors[priority] || colors.MEDIUM;
+        },
+
+        formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('el-GR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        },
+
+        async createMilestone() {
+            if (!this.newMilestone.team_id || !this.newMilestone.title || !this.newMilestone.target_date) {
+                this.milestoneError = 'Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία';
+                return;
+            }
+
+            this.creatingMilestone = true;
+            this.milestoneError = '';
+
+            try {
+                const response = await fetch(`${API_URL}/milestones/index.php`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(this.newMilestone)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Milestone error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const milestone = await response.json();
+                this.milestones.push(milestone);
+                this.showMilestoneModal = false;
+                
+                // Reset form
+                this.newMilestone = {
+                    team_id: '',
+                    title: '',
+                    description: '',
+                    target_date: '',
+                    status: 'upcoming'
+                };
+                
+                alert('Milestone δημιουργήθηκε επιτυχώς!');
+            } catch (err) {
+                console.error('Create milestone error:', err);
+                this.milestoneError = 'Σφάλμα: ' + err.message;
+            } finally {
+                this.creatingMilestone = false;
+            }
+        },
+
+        openEditMilestone(milestone) {
+            this.editingMilestone = milestone.id;
+            this.newMilestone = {
+                team_id: milestone.team_id,
+                title: milestone.title,
+                description: milestone.description || '',
+                target_date: milestone.target_date,
+                status: milestone.status
+            };
+            this.showMilestoneModal = true;
+        },
+
+        async updateMilestone() {
+            if (!this.newMilestone.team_id || !this.newMilestone.title || !this.newMilestone.target_date) {
+                this.milestoneError = 'Παρακαλώ συμπληρώστε όλα τα υποχρεωτικά πεδία';
+                return;
+            }
+
+            this.creatingMilestone = true;
+            this.milestoneError = '';
+
+            try {
+                const response = await fetch(`${API_URL}/milestones/index.php?id=${this.editingMilestone}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(this.newMilestone)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Update milestone in array
+                const index = this.milestones.findIndex(m => m.id === this.editingMilestone);
+                if (index !== -1) {
+                    this.milestones[index] = { ...this.milestones[index], ...this.newMilestone };
+                }
+
+                this.showMilestoneModal = false;
+                this.editingMilestone = null;
+                this.newMilestone = {
+                    team_id: '',
+                    title: '',
+                    description: '',
+                    target_date: '',
+                    status: 'upcoming'
+                };
+                
+                alert('Milestone ενημερώθηκε επιτυχώς!');
+            } catch (err) {
+                console.error('Update milestone error:', err);
+                this.milestoneError = 'Σφάλμα: ' + err.message;
+            } finally {
+                this.creatingMilestone = false;
+            }
+        },
+
+        async deleteMilestone(milestoneId) {
+            if (!confirm('Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το milestone;')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/milestones/index.php?id=${milestoneId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                // Remove from array
+                this.milestones = this.milestones.filter(m => m.id !== milestoneId);
+                
+                alert('Milestone διαγράφηκε επιτυχώς!');
+            } catch (err) {
+                console.error('Delete milestone error:', err);
+                alert('Σφάλμα διαγραφής: ' + err.message);
+            }
+        },
+
+        saveMilestone() {
+            if (this.editingMilestone) {
+                this.updateMilestone();
+            } else {
+                this.createMilestone();
+            }
+        },
+
+        cancelMilestoneEdit() {
+            this.showMilestoneModal = false;
+            this.editingMilestone = null;
+            this.newMilestone = {
+                team_id: '',
+                title: '',
+                description: '',
+                target_date: '',
+                status: 'upcoming'
+            };
+            this.milestoneError = '';
+        }
+    }
+}
+</script>
+
+<style>
+    .gantt-container {
+        overflow-x: auto;
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+    }
+    
+    .bar-critical {
+        fill: #ef4444 !important;
+    }
+    
+    .bar-wrapper:hover .bar-critical {
+        fill: #dc2626 !important;
+    }
+</style>
+
+<div x-data="timelineApp()" x-init="init()" class="space-y-6 w-full">
+    
+    <!-- Header with View Toggle -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <p class="text-purple-100 text-sm" x-text="'Προβολή ' + tasks.length + ' εργασιών'"></p>
+        </div>
+        <div class="flex items-center gap-3">
+            <!-- View Mode Toggle -->
+            <div class="glass rounded-xl p-1 flex gap-1">
+                <button @click="viewMode = 'gantt'" 
+                        :class="viewMode === 'gantt' ? 'bg-blue-600 text-white' : 'text-gray-600'"
+                        class="px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-chart-gantt mr-2"></i>Gantt
+                </button>
+                <button @click="viewMode = 'timeline'" 
+                        :class="viewMode === 'timeline' ? 'bg-purple-600 text-white' : 'text-gray-600'"
+                        class="px-4 py-2 rounded-lg transition">
+                    <i class="fas fa-calendar-days mr-2"></i>List
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters Bar -->
+    <div class="glass rounded-3xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-bold text-gray-800">Φίλτρα & Ρυθμίσεις</h3>
+            <button @click="showMilestoneModal = true" 
+                    class="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-lg transition">
+                <i class="fas fa-flag mr-2"></i>Νέο Milestone
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <!-- Team Filter -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Ομάδα</label>
+                <select x-model="filters.team_id" @change="loadTimeline" 
+                        class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                    <option value="">Όλες οι ομάδες</option>
+                    <template x-for="team in teams" :key="team.id">
+                        <option :value="team.id" x-text="team.name"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <!-- User Filter -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Χρήστης</label>
+                <select x-model="filters.user_id" @change="loadTimeline"
+                        class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                    <option value="">Όλοι οι χρήστες</option>
+                    <template x-for="user in users" :key="user.id">
+                        <option :value="user.id" x-text="user.first_name + ' ' + user.last_name"></option>
+                    </template>
+                </select>
+            </div>
+            
+            <!-- Date Range -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Από</label>
+                <input type="date" x-model="filters.start_date" @change="loadTimeline"
+                       class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Έως</label>
+                <input type="date" x-model="filters.end_date" @change="loadTimeline"
+                       class="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+            </div>
+        </div>
+        
+        <!-- Zoom Controls -->
+        <div class="flex items-center gap-4 mt-4 pt-4 border-t">
+            <span class="text-sm font-semibold text-gray-700">Προβολή:</span>
+            <div class="flex gap-2">
+                <button @click="setZoom('Day')" 
+                        :class="zoom === 'Day' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600'"
+                        class="px-3 py-1 rounded-lg text-sm transition border">
+                    Ημέρα
+                </button>
+                <button @click="setZoom('Week')" 
+                        :class="zoom === 'Week' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600'"
+                        class="px-3 py-1 rounded-lg text-sm transition border">
+                    Εβδομάδα
+                </button>
+                <button @click="setZoom('Month')" 
+                        :class="zoom === 'Month' ? 'bg-purple-600 text-white' : 'bg-white text-gray-600'"
+                        class="px-3 py-1 rounded-lg text-sm transition border">
+                    Μήνας
+                </button>
+            </div>
+            
+            <button @click="goToToday" class="ml-auto px-4 py-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg text-sm hover:shadow-lg transition">
+                <i class="fas fa-calendar-day mr-2"></i>Σήμερα
+            </button>
+            
+            <button @click="showCriticalPath = !showCriticalPath" 
+                    :class="showCriticalPath ? 'bg-red-600 text-white' : 'bg-white text-gray-600'"
+                    class="px-4 py-1 rounded-lg text-sm transition border">
+                <i class="fas fa-route mr-2"></i>Critical Path
+            </button>
+        </div>
+    </div>
+
+    <!-- Critical Path Info -->
+    <div x-show="showCriticalPath && criticalPath.task_ids && criticalPath.task_ids.length > 0" 
+         x-transition
+         class="glass rounded-3xl p-6 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2">
+                    <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i>
+                    Κρίσιμο Μονοπάτι (Critical Path)
+                </h3>
+                <p class="text-sm text-gray-600 mb-3">
+                    Οι εργασίες που καθορίζουν την ελάχιστη διάρκεια του project.
+                </p>
+                <div class="flex items-center gap-4">
+                    <div class="text-sm">
+                        <span class="font-semibold">Συνολική Διάρκεια:</span>
+                        <span class="text-red-600" x-text="criticalPath.total_duration + ' ημέρες'"></span>
+                    </div>
+                    <div class="text-sm">
+                        <span class="font-semibold">Εργασίες:</span>
+                        <span class="text-red-600" x-text="criticalPath.task_ids.length"></span>
+                    </div>
+                </div>
+            </div>
+            <button @click="showCriticalPath = false" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div x-show="loading" class="glass rounded-3xl p-12 text-center">
+        <i class="fas fa-spinner fa-spin text-4xl text-purple-600 mb-4"></i>
+        <p class="text-gray-600">Φόρτωση timeline...</p>
+    </div>
+
+    <!-- Gantt Chart -->
+    <div x-show="!loading && viewMode === 'gantt'" class="glass rounded-3xl p-6">
+        <div x-show="tasks.length === 0" class="text-center py-12">
+            <i class="fas fa-chart-gantt text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Δεν βρέθηκαν εργασίες</h3>
+            <p class="text-gray-600">Δημιουργήστε εργασίες με deadline για να εμφανιστούν στο Gantt Chart</p>
+        </div>
+        <div id="gantt" class="gantt-container"></div>
+    </div>
+
+    <!-- Milestones List -->
+    <div x-show="!loading && milestones.length > 0" 
+         x-transition
+         class="glass rounded-3xl p-8 overflow-hidden relative">
+        <!-- Background Decoration -->
+        <div class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full blur-3xl opacity-20 -mr-32 -mt-32"></div>
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-200 to-indigo-200 rounded-full blur-3xl opacity-20 -ml-32 -mb-32"></div>
+        
+        <div class="relative z-10">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mr-3 shadow-lg">
+                        <i class="fas fa-flag text-white text-lg"></i>
+                    </div>
+                    <span>Milestones</span>
+                    <span class="ml-3 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full text-sm font-bold shadow-lg" 
+                          x-text="milestones.length"></span>
+                </h3>
+                <div class="text-sm text-gray-500">
+                    <i class="fas fa-chart-line mr-1"></i>
+                    Project Milestones Timeline
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <template x-for="milestone in milestones" :key="milestone.id">
+                    <div class="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border-l-4 cursor-pointer overflow-hidden"
+                         :class="{
+                             'border-yellow-400': milestone.status === 'upcoming',
+                             'border-blue-500': milestone.status === 'in_progress',
+                             'border-green-500': milestone.status === 'completed',
+                             'border-red-500': milestone.status === 'missed'
+                         }">
+                        <!-- Animated Background Gradient -->
+                        <div class="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+                             :class="{
+                                 'bg-gradient-to-br from-yellow-200 to-yellow-100': milestone.status === 'upcoming',
+                                 'bg-gradient-to-br from-blue-200 to-blue-100': milestone.status === 'in_progress',
+                                 'bg-gradient-to-br from-green-200 to-green-100': milestone.status === 'completed',
+                                 'bg-gradient-to-br from-red-200 to-red-100': milestone.status === 'missed'
+                             }"></div>
+                        
+                        <!-- Content -->
+                        <div class="relative z-10">
+                            <!-- Header -->
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex-1 pr-2">
+                                    <h4 class="font-bold text-lg text-gray-800 mb-2 group-hover:text-purple-600 transition-colors" 
+                                        x-text="milestone.title"></h4>
+                                    <div class="flex items-center gap-2 text-xs text-gray-500" x-show="milestone.team_name">
+                                        <div class="flex items-center px-2 py-1 bg-gray-100 rounded-lg">
+                                            <i class="fas fa-users mr-1.5 text-purple-500"></i>
+                                            <span x-text="milestone.team_name"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end gap-2">
+                                    <!-- Status Badge -->
+                                    <span class="px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm uppercase tracking-wide"
+                                          :class="{
+                                              'bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900': milestone.status === 'upcoming',
+                                              'bg-gradient-to-r from-blue-500 to-blue-600 text-white': milestone.status === 'in_progress',
+                                              'bg-gradient-to-r from-green-500 to-green-600 text-white': milestone.status === 'completed',
+                                              'bg-gradient-to-r from-red-500 to-red-600 text-white': milestone.status === 'missed'
+                                          }"
+                                          x-text="milestone.status.replace('_', ' ')"></span>
+                                    
+                                    <!-- Status Icon -->
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-md"
+                                         :class="{
+                                             'bg-yellow-100': milestone.status === 'upcoming',
+                                             'bg-blue-100': milestone.status === 'in_progress',
+                                             'bg-green-100': milestone.status === 'completed',
+                                             'bg-red-100': milestone.status === 'missed'
+                                         }">
+                                        <i class="fas text-lg"
+                                           :class="{
+                                               'fa-clock text-yellow-600': milestone.status === 'upcoming',
+                                               'fa-spinner fa-spin text-blue-600': milestone.status === 'in_progress',
+                                               'fa-check-circle text-green-600': milestone.status === 'completed',
+                                               'fa-times-circle text-red-600': milestone.status === 'missed'
+                                           }"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Description -->
+                            <p class="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[40px]" 
+                               x-text="milestone.description || 'Χωρίς περιγραφή'"></p>
+                            
+                            <!-- Footer -->
+                            <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                                <div class="flex items-center text-sm">
+                                    <div class="flex items-center px-3 py-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl">
+                                        <i class="fas fa-calendar-alt mr-2 text-purple-600"></i>
+                                        <span class="font-semibold text-gray-700" 
+                                              x-text="new Date(milestone.target_date).toLocaleDateString('el-GR', {day: 'numeric', month: 'short', year: 'numeric'})"></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Days Indicator -->
+                                <div class="flex items-center text-xs font-semibold">
+                                    <template x-if="milestone.status !== 'completed'">
+                                        <div class="px-2 py-1 rounded-lg"
+                                             :class="{
+                                                 'bg-green-100 text-green-700': new Date(milestone.target_date) > new Date(),
+                                                 'bg-red-100 text-red-700': new Date(milestone.target_date) <= new Date()
+                                             }">
+                                            <i class="fas fa-hourglass-half mr-1"></i>
+                                            <span x-text="Math.abs(Math.ceil((new Date(milestone.target_date) - new Date()) / (1000 * 60 * 60 * 24))) + ' days'"></span>
+                                        </div>
+                                    </template>
+                                    <template x-if="milestone.status === 'completed'">
+                                        <div class="px-2 py-1 bg-green-100 text-green-700 rounded-lg">
+                                            <i class="fas fa-check mr-1"></i>
+                                            Done
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                                <button @click.stop="openEditMilestone(milestone)"
+                                        class="flex-1 px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg transition-all transform hover:scale-105">
+                                    <i class="fas fa-edit mr-1"></i>
+                                    Επεξεργασία
+                                </button>
+                                <button @click.stop="deleteMilestone(milestone.id)"
+                                        class="flex-1 px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl text-sm font-semibold hover:shadow-lg transition-all transform hover:scale-105">
+                                    <i class="fas fa-trash mr-1"></i>
+                                    Διαγραφή
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Hover Shine Effect -->
+                        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- List View -->
+    <div x-show="!loading && viewMode === 'timeline'" class="space-y-4">
+        <template x-for="task in tasks" :key="task.id">
+            <div class="glass rounded-3xl p-4 hover:shadow-xl transition cursor-pointer card-hover">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span :class="getPriorityColor(task.priority)" 
+                                  class="px-2 py-1 rounded text-xs font-semibold">
+                                <span x-text="task.priority"></span>
+                            </span>
+                            <h3 class="font-bold text-gray-800" x-text="task.title"></h3>
+                            <span x-show="criticalPath.task_ids && criticalPath.task_ids.includes(task.id)" 
+                                  class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-semibold">
+                                CRITICAL
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4 text-sm text-gray-600">
+                            <span><i class="far fa-calendar mr-1"></i><span x-text="formatDate(task.start_date)"></span></span>
+                            <span><i class="fas fa-arrow-right mx-2"></i></span>
+                            <span><i class="far fa-calendar-check mr-1"></i><span x-text="formatDate(task.end_date)"></span></span>
+                            <span class="ml-4"><i class="fas fa-clock mr-1"></i><span x-text="task.duration + ' ημέρες'"></span></span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="w-32">
+                            <div class="flex justify-between text-xs text-gray-600 mb-1">
+                                <span>Progress</span>
+                                <span x-text="task.progress + '%'"></span>
+                            </div>
+                            <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div :style="'width: ' + task.progress + '%'" 
+                                     class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        
+        <div x-show="tasks.length === 0" class="glass rounded-3xl p-12 text-center">
+            <i class="fas fa-tasks text-6xl text-gray-300 mb-4"></i>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Δεν βρέθηκαν εργασίες</h3>
+            <p class="text-gray-600">Δοκιμάστε να αλλάξετε τα φίλτρα</p>
+        </div>
+    </div>
+
+    <!-- Milestone Modal (MOVED INSIDE x-data div) -->
+    <div x-show="showMilestoneModal" 
+     x-transition
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+     @click.self="showMilestoneModal = false">
+    
+    <div class="glass rounded-3xl p-8 max-w-md w-full" @click.stop>
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+            <i class="fas mr-2" :class="editingMilestone ? 'fa-edit text-blue-600' : 'fa-flag text-purple-600'"></i>
+            <span x-text="editingMilestone ? 'Επεξεργασία Milestone' : 'Νέο Milestone'"></span>
+        </h2>
+        
+        <form @submit.prevent="saveMilestone" class="space-y-4">
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Ομάδα</label>
+                <select x-model="newMilestone.team_id" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                    <option value="">Επιλέξτε ομάδα</option>
+                    <template x-for="team in teams" :key="team.id">
+                        <option :value="team.id" x-text="team.name"></option>
+                    </template>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Τίτλος</label>
+                <input type="text" x-model="newMilestone.title" required
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                       placeholder="π.χ. Phase 1 Complete">
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Περιγραφή</label>
+                <textarea x-model="newMilestone.description" rows="3"
+                          class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+                          placeholder="Προαιρετική περιγραφή..."></textarea>
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Ημερομηνία Στόχος</label>
+                <input type="date" x-model="newMilestone.target_date" required
+                       class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+            </div>
+
+            <div>
+                <label class="block text-gray-700 font-semibold mb-2">Κατάσταση</label>
+                <select x-model="newMilestone.status"
+                        class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200">
+                    <option value="upcoming">Upcoming</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="missed">Missed</option>
+                </select>
+            </div>
+
+            <div x-show="milestoneError" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl text-sm" x-text="milestoneError"></div>
+
+            <div class="flex gap-3 pt-4">
+                <button type="button" @click="cancelMilestoneEdit"
+                        class="flex-1 px-6 py-3 border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
+                    Ακύρωση
+                </button>
+                <button type="submit" :disabled="creatingMilestone"
+                        class="flex-1 px-6 py-3 bg-gradient-to-r text-white font-semibold rounded-xl hover:shadow-lg transition disabled:opacity-50"
+                        :class="editingMilestone ? 'from-blue-600 to-blue-700' : 'from-purple-600 to-pink-600'">
+                    <template x-if="!creatingMilestone">
+                        <span x-text="editingMilestone ? 'Ενημέρωση' : 'Δημιουργία'"></span>
+                    </template>
+                    <template x-if="creatingMilestone">
+                        <span x-text="editingMilestone ? 'Ενημέρωση...' : 'Δημιουργία...'"></span>
+                    </template>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</div> <!-- END of x-data="timelineApp()" -->

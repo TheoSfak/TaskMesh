@@ -73,9 +73,28 @@ if ($method === 'POST') {
     $stmt->execute();
     $team = $stmt->fetch();
     
-    if (!$team || ($team['owner_id'] != $user['id'] && $user['role'] !== 'ADMIN')) {
+    if (!$team || ($team['owner_id'] != $user['id'] && $user['role'] !== 'ADMIN' && $user['role'] !== 'MANAGER')) {
         http_response_code(403);
-        echo json_encode(array("error" => "Only team owner or admin can add members"));
+        echo json_encode(array("error" => "Only team owner, manager, or admin can add members"));
+        exit();
+    }
+    
+    // Check max team size
+    $query = "SELECT setting_value FROM system_settings WHERE setting_key = 'max_team_size'";
+    $stmt = $db->query($query);
+    $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    $maxTeamSize = $result ? (int)$result['setting_value'] : 50;
+    
+    // Get current team member count
+    $query = "SELECT COUNT(*) as count FROM team_members WHERE team_id = :team_id";
+    $stmt = $db->prepare($query);
+    $stmt->bindParam(":team_id", $data->team_id);
+    $stmt->execute();
+    $result = $stmt->fetch();
+    
+    if ($result['count'] >= $maxTeamSize) {
+        http_response_code(400);
+        echo json_encode(array("error" => "Team has reached maximum size of $maxTeamSize members"));
         exit();
     }
     
@@ -152,9 +171,9 @@ if ($method === 'DELETE') {
     $stmt->execute();
     $team = $stmt->fetch();
     
-    if (!$team || ($team['owner_id'] != $user['id'] && $user['role'] !== 'ADMIN')) {
+    if (!$team || ($team['owner_id'] != $user['id'] && $user['role'] !== 'ADMIN' && $user['role'] !== 'MANAGER')) {
         http_response_code(403);
-        echo json_encode(array("error" => "Only team owner or admin can remove members"));
+        echo json_encode(array("error" => "Only team owner, manager, or admin can remove members"));
         exit();
     }
     
